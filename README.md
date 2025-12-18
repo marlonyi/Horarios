@@ -11,7 +11,7 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 - 🕐 Formato de 12 horas (AM/PM) con conversión automática
 - 📅 Ordenamiento por fecha y hora de entrada
 - 💾 Persistencia de datos en IndexedDB (sin pérdida de datos)
--  Filtrado por fecha para vistas diarias
+- Filtrado por fecha para vistas diarias
 - 📱 Vista agrupada por fecha con secciones expandibles (desktop y móvil)
 - 📊 Indicador del día filtrado con contador de horarios
 - 🎨 Diseño profesional con gradientes y sombras
