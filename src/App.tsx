@@ -481,7 +481,7 @@ function App() {
               )}
               
               {/* Tabla para desktop */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="block overflow-x-auto">
                 <table className="min-w-full">
                   <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
                     <tr>
@@ -601,7 +601,7 @@ function App() {
               </div>
               
               {/* Cards para móviles */}
-              <div className="md:hidden">
+              <div className="hidden">
                 {filterDate && (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-4 py-3 mb-4 rounded-lg">
                     <div className="flex flex-col gap-3">
