@@ -41,6 +41,8 @@
 - ✅ Mejorada experiencia de usuario con navegación organizada por fechas
 - ✅ Agregado indicador del día filtrado con contador de horarios en desktop y móvil
 - ✅ Configurado filtro por fecha por defecto con la fecha actual
+- ✅ Eliminadas funciones de exportar/importar no utilizadas
+- ✅ Configurado proyecto para deploy en Vercel con archivos de configuración
 
 - [x] Launch the Project
 

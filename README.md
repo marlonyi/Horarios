@@ -41,6 +41,59 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 - `npm run preview` - Vista previa de la build de producción
 - `npm run lint` - Ejecuta ESLint
 
+## 🚀 Deploy en Vercel
+
+### Opción 1: Deploy Automático (Recomendado)
+
+1. **Conecta tu repositorio a Vercel:**
+   - Ve a [vercel.com](https://vercel.com) y crea una cuenta
+   - Haz clic en "New Project"
+   - Importa tu repositorio de GitHub/GitLab
+
+2. **Configuración automática:**
+   - Vercel detectará automáticamente que es un proyecto de Vite
+   - El build command será: `npm run build`
+   - El output directory será: `dist`
+
+3. **Deploy:**
+   - Haz clic en "Deploy"
+   - Vercel construirá y desplegará tu aplicación automáticamente
+
+### Opción 2: Deploy Manual con Vercel CLI
+
+1. **Instala Vercel CLI:**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Deploy desde terminal:**
+   ```bash
+   vercel
+   ```
+
+3. **Sigue las instrucciones:**
+   - Selecciona el directorio del proyecto
+   - Vercel detectará la configuración automáticamente
+
+### Configuración de Vercel
+
+El proyecto incluye:
+- `vercel.json` - Configuración específica para Vercel
+- `.vercelignore` - Archivos excluidos del deploy
+
+### URL de Producción
+
+Después del deploy, Vercel te proporcionará una URL como:
+`https://horarios-[tu-nombre].vercel.app`
+
+### Características en Producción
+
+- ✅ Build optimizado para producción
+- ✅ IndexedDB funciona en el navegador
+- ✅ PWA-ready (si decides agregarlo)
+- ✅ HTTPS automático
+- ✅ CDN global de Vercel
+
 ## Uso
 
 1. **Agregar Horario**: Haz clic en "Agregar Horario" para crear un nuevo horario
