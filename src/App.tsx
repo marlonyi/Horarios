@@ -316,34 +316,34 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-4 sm:px-8 py-4 sm:py-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white text-center">Sistema de Asignación de Horarios</h1>
-            <p className="text-blue-100 text-center mt-2 text-sm sm:text-base">Gestión profesional de horarios laborales</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4 md:p-6">
+      <div className="max-w-7xl mx-auto h-full">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden min-h-[calc(100vh-1rem)] sm:min-h-0">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center">Sistema de Asignación de Horarios</h1>
+            <p className="text-blue-100 text-center mt-1 sm:mt-2 text-xs sm:text-sm md:text-base">Gestión profesional de horarios laborales</p>
           </div>
           
-          <div className="p-4 sm:p-8">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mb-6">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8 min-h-[calc(100vh-8rem)] sm:min-h-0">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
               <button
                 onClick={() => openModal()}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
               >
                 <Plus size={20} />
                 Agregar Horario
               </button>
             </div>
             
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                   <label className="text-sm font-medium text-gray-700">Filtrar por fecha:</label>
                   <input
                     type="date"
                     value={filterDate}
                     onChange={(e) => setFilterDate(e.target.value)}
-                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 w-full sm:w-auto"
+                    className="border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 sm:px-3 sm:py-2 w-full sm:w-auto min-h-[44px] text-base"
                   />
                 </div>
                 <button
@@ -351,7 +351,7 @@ function App() {
                     setFilterDate('');
                     setExpandedDates(new Set());
                   }}
-                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto"
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 sm:py-2 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto min-h-[44px] touch-manipulation"
                 >
                   Ver Todos
                 </button>
@@ -507,23 +507,23 @@ function App() {
                   {filterDate ? (
                     // Vista filtrada por fecha
                     sortedSchedules.map((schedule, index) => (
-                      <div key={schedule.id} className={`p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150`}>
+                      <div key={schedule.id} className={`p-4 sm:p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150`}>
                         <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{schedule.name}</h3>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg sm:text-lg font-semibold text-gray-900 truncate">{schedule.name}</h3>
                             <p className="text-sm text-gray-600">{formatDate(schedule.date)}</p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1 sm:gap-2 ml-2">
                             <button
                               onClick={() => openModal(schedule)}
-                              className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-100 transition-colors duration-150"
+                              className="text-blue-600 hover:text-blue-800 p-2 sm:p-2 rounded hover:bg-blue-100 transition-colors duration-150 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                               title="Editar"
                             >
                               <Edit size={20} />
                             </button>
                             <button
                               onClick={() => deleteSchedule(schedule.id)}
-                              className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-100 transition-colors duration-150"
+                              className="text-red-600 hover:text-red-800 p-2 sm:p-2 rounded hover:bg-red-100 transition-colors duration-150 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                               title="Eliminar"
                             >
                               <Trash2 size={20} />
@@ -531,24 +531,24 @@ function App() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3">
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Entrada</p>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 shadow-sm mt-1">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Entrada</p>
+                            <span className="inline-flex items-center px-3 py-2 sm:px-3 sm:py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 shadow-sm">
                               {formatTime12(schedule.entryTime)}
                             </span>
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Salida</p>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 shadow-sm mt-1">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Salida</p>
+                            <span className="inline-flex items-center px-3 py-2 sm:px-3 sm:py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 shadow-sm">
                               {formatTime12(schedule.exitTime)}
                             </span>
                           </div>
                         </div>
                         
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Duración</p>
-                          <p className="text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
+                          <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
                         </div>
                       </div>
                     ))
@@ -573,22 +573,22 @@ function App() {
                           </button>
                         </div>
                         {expandedDates.has(date) && daySchedules.map((schedule, index) => (
-                          <div key={schedule.id} className={`p-4 pl-8 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150`}>
+                          <div key={schedule.id} className={`p-4 pl-6 sm:pl-8 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150`}>
                             <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900">{schedule.name}</h3>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg sm:text-lg font-semibold text-gray-900 truncate">{schedule.name}</h3>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-1 sm:gap-2 ml-2">
                                 <button
                                   onClick={() => openModal(schedule)}
-                                  className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-100 transition-colors duration-150"
+                                  className="text-blue-600 hover:text-blue-800 p-2 sm:p-2 rounded hover:bg-blue-100 transition-colors duration-150 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                                   title="Editar"
                                 >
                                   <Edit size={20} />
                                 </button>
                                 <button
                                   onClick={() => deleteSchedule(schedule.id)}
-                                  className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-100 transition-colors duration-150"
+                                  className="text-red-600 hover:text-red-800 p-2 sm:p-2 rounded hover:bg-red-100 transition-colors duration-150 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                                   title="Eliminar"
                                 >
                                   <Trash2 size={20} />
@@ -596,24 +596,24 @@ function App() {
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3">
                               <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Entrada</p>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 shadow-sm mt-1">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Entrada</p>
+                                <span className="inline-flex items-center px-3 py-2 sm:px-3 sm:py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 shadow-sm">
                                   {formatTime12(schedule.entryTime)}
                                 </span>
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Salida</p>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 shadow-sm mt-1">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Salida</p>
+                                <span className="inline-flex items-center px-3 py-2 sm:px-3 sm:py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 shadow-sm">
                                   {formatTime12(schedule.exitTime)}
                                 </span>
                               </div>
                             </div>
                             
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Duración</p>
-                              <p className="text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
+                              <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
                             </div>
                           </div>
                         ))}
@@ -627,14 +627,14 @@ function App() {
         </div>
         
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-4 sm:px-6 py-4 rounded-t-2xl">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-full sm:max-w-md w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl">
                 <h3 className="text-lg sm:text-xl font-bold text-white text-center">
                   {editingSchedule ? 'Editar Horario' : 'Agregar Nuevo Horario'}
                 </h3>
               </div>
-              <div className="p-4 sm:p-6">
+              <div className="p-4 sm:p-6 flex-1 sm:flex-none">
                 {error && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
                     {error}
@@ -647,7 +647,7 @@ function App() {
                       type="text"
                       value={form.name}
                       onChange={(e) => setForm({...form, name: e.target.value})}
-                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                       placeholder="Ingrese el nombre"
                       required
                     />
@@ -681,7 +681,7 @@ function App() {
                             setForm({...form, entryHour: hour, entryPeriod: period});
                           }
                         }}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                         placeholder="0-23"
                         required
                       />
@@ -694,7 +694,7 @@ function App() {
                         max="59"
                         value={form.entryMinute}
                         onChange={(e) => setForm({...form, entryMinute: e.target.value})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                         placeholder="0-59"
                         required
                       />
@@ -704,7 +704,7 @@ function App() {
                       <select
                         value={form.entryPeriod}
                         onChange={(e) => setForm({...form, entryPeriod: e.target.value as 'AM' | 'PM'})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                       >
                         <option value="AM">AM</option>
                         <option value="PM">PM</option>
@@ -728,7 +728,7 @@ function App() {
                             setForm({...form, exitHour: hour, exitPeriod: period});
                           }
                         }}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                         placeholder="0-23"
                         required
                       />
@@ -741,7 +741,7 @@ function App() {
                         max="59"
                         value={form.exitMinute}
                         onChange={(e) => setForm({...form, exitMinute: e.target.value})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                         placeholder="0-59"
                         required
                       />
@@ -751,7 +751,7 @@ function App() {
                       <select
                         value={form.exitPeriod}
                         onChange={(e) => setForm({...form, exitPeriod: e.target.value as 'AM' | 'PM'})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                       >
                         <option value="AM">AM</option>
                         <option value="PM">PM</option>
@@ -763,13 +763,13 @@ function App() {
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
                     >
                       {editingSchedule ? 'Actualizar' : 'Agregar'}
                     </button>
