@@ -19,13 +19,46 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 - ⚡ Validación completa de formularios
 - 📊 Cálculo automático de duración de turnos
 
-## Tecnologías
+## 📱 Instalación en Dispositivos Móviles (PWA)
 
-- React 18 con TypeScript
-- Vite (build tool rápido)
-- Tailwind CSS (estilos modernos)
-- Lucide React (iconos profesionales)
-- IndexedDB (base de datos del navegador)
+Esta aplicación es una **Progressive Web App (PWA)** que se puede instalar en tu dispositivo móvil como una aplicación nativa.
+
+### Cómo Instalar:
+
+#### 📱 **Android / Chrome Mobile:**
+1. Abre la aplicación en Chrome móvil
+2. Toca el menú (tres puntos) ⋮
+3. Selecciona "Agregar a pantalla de inicio" o "Instalar aplicación"
+4. Confirma la instalación
+
+#### 🍎 **iOS / Safari:**
+1. Abre la aplicación en Safari
+2. Toca el botón compartir (cuadrado con flecha hacia arriba)
+3. Selecciona "Agregar a pantalla de inicio"
+4. Toca "Agregar" en la esquina superior derecha
+
+#### 🖥️ **Desktop / Chrome:**
+1. Abre la aplicación en Chrome
+2. Haz clic en el botón de instalar (⊕) en la barra de direcciones
+3. O ve a Menú → Más herramientas → Crear acceso directo
+
+### Características PWA:
+- ✅ **Instalación sin App Store** - Se instala directamente desde el navegador
+- 🔄 **Actualizaciones automáticas** - Se actualiza sola cuando hay nuevas versiones
+- 📱 **Experiencia nativa** - Se comporta como una app móvil real
+- ⚡ **Rápida y offline** - Funciona sin conexión a internet
+- 🔔 **Notificaciones** - Puede enviar notificaciones (futuro)
+- 🎨 **Icono en pantalla de inicio** - Aparece como cualquier otra app
+
+### Requisitos:
+- Navegador moderno con soporte PWA (Chrome, Safari, Edge, Firefox)
+- Conexión a internet para la instalación inicial
+- Espacio de almacenamiento disponible
+
+### Solución de Problemas:
+- Si no ves la opción de instalar, refresca la página
+- Asegúrate de que el navegador esté actualizado
+- En iOS, Safari es el único navegador que soporta instalación PWA
 
 ## Instalación
 
@@ -46,11 +79,13 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 ### Opción 1: Deploy Automático (Recomendado)
 
 1. **Conecta tu repositorio a Vercel:**
+
    - Ve a [vercel.com](https://vercel.com) y crea una cuenta
    - Haz clic en "New Project"
    - Importa tu repositorio de GitHub/GitLab
 
 2. **Configuración automática:**
+
    - Vercel detectará automáticamente que es un proyecto de Vite
    - El build command será: `npm run build`
    - El output directory será: `dist`
@@ -62,11 +97,13 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 ### Opción 2: Deploy Manual con Vercel CLI
 
 1. **Instala Vercel CLI:**
+
    ```bash
    npm install -g vercel
    ```
 
 2. **Deploy desde terminal:**
+
    ```bash
    vercel
    ```
@@ -78,6 +115,7 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 ### Configuración de Vercel
 
 El proyecto incluye:
+
 - `vercel.json` - Configuración específica para Vercel
 - `.vercelignore` - Archivos excluidos del deploy
 

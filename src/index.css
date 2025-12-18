@@ -12,7 +12,8 @@
 
 /* Mejorar experiencia en pantalla completa */
 @media screen and (max-width: 640px) {
-  html, body {
+  html,
+  body {
     height: 100vh;
     height: -webkit-fill-available;
     overflow-x: hidden;
