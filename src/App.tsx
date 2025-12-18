@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 interface Schedule {
   id: string;
@@ -193,6 +194,104 @@ function App() {
     return `${displayHour.toString().padStart(2, '0')}:${m} ${period}`;
   };
 
+  const generateDailySummaryImage = async () => {
+    if (!filterDate || sortedSchedules.length === 0) return;
+
+    // Crear un elemento temporal con el contenido del resumen
+    const summaryElement = document.createElement('div');
+    summaryElement.style.width = '800px';
+    summaryElement.style.padding = '40px';
+    summaryElement.style.background = 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)';
+    summaryElement.style.fontFamily = 'Arial, sans-serif';
+    summaryElement.style.color = '#1f2937';
+    summaryElement.style.borderRadius = '20px';
+    summaryElement.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+
+    summaryElement.innerHTML = `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="font-size: 32px; font-weight: bold; color: #1e40af; margin: 0; margin-bottom: 10px;">Resumen de Horarios</h1>
+        <h2 style="font-size: 24px; color: #374151; margin: 0;">${formatDate(filterDate)}</h2>
+        <p style="font-size: 16px; color: #6b7280; margin: 10px 0 0 0;">${sortedSchedules.length} empleado${sortedSchedules.length !== 1 ? 's' : ''} programado${sortedSchedules.length !== 1 ? 's' : ''}</p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <thead style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white;">
+          <tr>
+            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">EMPLEADO</th>
+            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">ENTRADA</th>
+            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">SALIDA</th>
+            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">DURACIÓN</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedSchedules.map((schedule, index) => `
+            <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+              <td style="padding: 16px; font-weight: 600; color: #111827; font-size: 16px;">${schedule.name}</td>
+              <td style="padding: 16px;">
+                <span style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 500;">${formatTime12(schedule.entryTime)}</span>
+              </td>
+              <td style="padding: 16px;">
+                <span style="background: #fed7aa; color: #9a3412; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 500;">${formatTime12(schedule.exitTime)}</span>
+              </td>
+              <td style="padding: 16px; color: #374151; font-weight: 500; font-size: 14px;">${calculateDuration(schedule.entryTime, schedule.exitTime)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #9ca3af;">
+        Generado por Sistema de Asignación de Horarios - ${new Date().toLocaleString('es-ES')}
+      </div>
+    `;
+
+    // Agregar temporalmente al DOM para capturar
+    document.body.appendChild(summaryElement);
+
+    try {
+      const canvas = await html2canvas(summaryElement, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      // Remover el elemento temporal
+      document.body.removeChild(summaryElement);
+
+      // Convertir a blob y descargar
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `horarios-${filterDate}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          // Intentar compartir por WhatsApp si está disponible
+          if (navigator.share) {
+            navigator.share({
+              title: `Horarios del ${formatDate(filterDate)}`,
+              text: `Resumen de horarios para ${formatDate(filterDate)}`,
+              files: [new File([blob], `horarios-${filterDate}.png`, { type: 'image/png' })],
+            }).catch(() => {
+              // Fallback: mostrar mensaje para compartir manualmente
+              alert('Imagen descargada. Puedes compartirla por WhatsApp manualmente.');
+            });
+          } else {
+            // Fallback para navegadores sin Web Share API
+            const whatsappUrl = `https://wa.me/?text=Horarios%20del%20${encodeURIComponent(formatDate(filterDate))}`;
+            window.open(whatsappUrl, '_blank');
+            alert('Imagen descargada. Abre WhatsApp para compartir.');
+          }
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error generando imagen:', error);
+      alert('Error al generar la imagen. Inténtalo de nuevo.');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -362,12 +461,22 @@ function App() {
               {/* Indicador del día filtrado */}
               {filterDate && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-4">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Horarios del {formatDate(filterDate)}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {sortedSchedules.length} horario{sortedSchedules.length !== 1 ? 's' : ''} programado{sortedSchedules.length !== 1 ? 's' : ''}
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        Horarios del {formatDate(filterDate)}
+                      </h2>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {sortedSchedules.length} horario{sortedSchedules.length !== 1 ? 's' : ''} programado{sortedSchedules.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={generateDailySummaryImage}
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm min-h-[44px] touch-manipulation"
+                    >
+                      📸 Generar Resumen
+                    </button>
+                  </div>
                 </div>
               )}
               
@@ -495,12 +604,22 @@ function App() {
               <div className="md:hidden">
                 {filterDate && (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-4 py-3 mb-4 rounded-lg">
-                    <h2 className="text-lg font-bold text-gray-900">
-                      Horarios del {formatDate(filterDate)}
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {sortedSchedules.length} horario{sortedSchedules.length !== 1 ? 's' : ''} programado{sortedSchedules.length !== 1 ? 's' : ''}
-                    </p>
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900">
+                          Horarios del {formatDate(filterDate)}
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {sortedSchedules.length} horario{sortedSchedules.length !== 1 ? 's' : ''} programado{sortedSchedules.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={generateDailySummaryImage}
+                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] touch-manipulation w-full"
+                      >
+                        📸 Generar Resumen
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div className="divide-y divide-gray-200">

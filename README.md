@@ -18,6 +18,7 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 - 🔄 Interfaz moderna y responsiva
 - ⚡ Validación completa de formularios
 - 📊 Cálculo automático de duración de turnos
+- 📸 **Generar resumen diario en imagen** - Crear y descargar imagen con horarios del día para compartir
 
 ## 📱 Instalación en Dispositivos Móviles (PWA)
 
@@ -26,23 +27,27 @@ Esta aplicación es una **Progressive Web App (PWA)** que se puede instalar en t
 ### Cómo Instalar:
 
 #### 📱 **Android / Chrome Mobile:**
+
 1. Abre la aplicación en Chrome móvil
 2. Toca el menú (tres puntos) ⋮
 3. Selecciona "Agregar a pantalla de inicio" o "Instalar aplicación"
 4. Confirma la instalación
 
 #### 🍎 **iOS / Safari:**
+
 1. Abre la aplicación en Safari
 2. Toca el botón compartir (cuadrado con flecha hacia arriba)
 3. Selecciona "Agregar a pantalla de inicio"
 4. Toca "Agregar" en la esquina superior derecha
 
 #### 🖥️ **Desktop / Chrome:**
+
 1. Abre la aplicación en Chrome
 2. Haz clic en el botón de instalar (⊕) en la barra de direcciones
 3. O ve a Menú → Más herramientas → Crear acceso directo
 
 ### Características PWA:
+
 - ✅ **Instalación sin App Store** - Se instala directamente desde el navegador
 - 🔄 **Actualizaciones automáticas** - Se actualiza sola cuando hay nuevas versiones
 - 📱 **Experiencia nativa** - Se comporta como una app móvil real
@@ -51,11 +56,13 @@ Esta aplicación es una **Progressive Web App (PWA)** que se puede instalar en t
 - 🎨 **Icono en pantalla de inicio** - Aparece como cualquier otra app
 
 ### Requisitos:
+
 - Navegador moderno con soporte PWA (Chrome, Safari, Edge, Firefox)
 - Conexión a internet para la instalación inicial
 - Espacio de almacenamiento disponible
 
 ### Solución de Problemas:
+
 - Si no ves la opción de instalar, refresca la página
 - Asegúrate de que el navegador esté actualizado
 - En iOS, Safari es el único navegador que soporta instalación PWA
@@ -140,5 +147,6 @@ Después del deploy, Vercel te proporcionará una URL como:
 4. **Vista Agrupada**: En "Ver Todos", los horarios se agrupan por fecha con secciones expandibles
 5. **Filtrar por Fecha**: Selecciona una fecha específica para ver solo los horarios de ese día con indicador del día
 6. **Editar/Eliminar**: Usa los iconos de editar y eliminar para modificar o borrar horarios
+7. **📸 Generar Resumen Diario**: Cuando estés viendo los horarios de un día específico, haz clic en "Generar Resumen" para crear una imagen profesional con todos los horarios del día. La imagen se descarga automáticamente y se intenta compartir por WhatsApp (o se abre WhatsApp para compartir manualmente).
 
 Los datos se guardan automáticamente en IndexedDB y persisten entre sesiones sin pérdida de información.
