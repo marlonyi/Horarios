@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
+// Estilos y tipografías navideñas
+import './fonts.css';
+import './christmas-styles.css';
+
 interface Schedule {
   id: string;
   name: string;
@@ -66,12 +70,8 @@ function App() {
   const [form, setForm] = useState({
     name: '',
     date: '',
-    entryHour: '',
-    entryMinute: '',
-    entryPeriod: 'AM' as 'AM' | 'PM',
-    exitHour: '',
-    exitMinute: '',
-    exitPeriod: 'PM' as 'AM' | 'PM',
+    entryTime: '',
+    exitTime: '',
   });
   const [error, setError] = useState('');
   const [filterDate, setFilterDate] = useState(() => {
@@ -146,24 +146,6 @@ function App() {
     setExpandedDates(newExpanded);
   };
 
-  const parseTime12 = (hour: string, minute: string, period: string) => {
-    let h = parseInt(hour);
-    if (period === 'PM' && h !== 12) h += 12;
-    if (period === 'AM' && h === 12) h = 0;
-    return `${h.toString().padStart(2,'0')}:${minute.padStart(2,'0')}`;
-  };
-
-  const convertTo12Hour = (hour24: string) => {
-    const h = parseInt(hour24);
-    let period: 'AM' | 'PM' = 'AM';
-    let hour12 = h;
-    if (h >= 12) {
-      period = 'PM';
-      if (h > 12) hour12 = h - 12;
-    }
-    if (h === 0) hour12 = 12;
-    return { hour: hour12.toString(), period };
-  };
 
   const calculateDuration = (entry: string, exit: string) => {
     const e = new Date(`2000-01-01T${entry}`);
@@ -172,6 +154,38 @@ function App() {
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
     return `${hours}h ${minutes}m`;
+  };
+
+  const calculateWorkHours = (entry: string, exit: string, entryPeriod: 'AM' | 'PM') => {
+    const e = new Date(`2000-01-01T${entry}`);
+    const x = new Date(`2000-01-01T${exit}`);
+    const diff = x.getTime() - e.getTime();
+    const totalMinutes = Math.floor(diff / 60000);
+    const totalHours = totalMinutes / 60;
+
+    // Verificar si entra hasta las 12 PM (mediodía) para aplicar almuerzo
+    const entryHour = parseInt(entry.split(':')[0]);
+    const hasLunch = entryHour <= 12;
+    const lunchHours = hasLunch ? 1 : 0;
+
+    // Calcular horas esperadas: 8 efectivas + almuerzo si aplica
+    const expectedHours = 8 + lunchHours;
+
+    // Horas efectivas = total - almuerzo (máximo 8 horas)
+    const effectiveHours = Math.min(8, Math.max(0, totalHours - lunchHours));
+
+    // Horas extras: tiempo trabajado más allá de lo esperado
+    const overtimeHours = Math.max(0, totalHours - expectedHours);
+
+    return {
+      totalHours,
+      lunchHours,
+      effectiveHours,
+      overtimeHours,
+      formattedTotal: `${Math.floor(totalHours)}h ${Math.floor((totalHours % 1) * 60)}m`,
+      formattedEffective: `${Math.floor(effectiveHours)}h ${Math.floor((effectiveHours % 1) * 60)}m`,
+      formattedOvertime: overtimeHours > 0 ? `${Math.floor(overtimeHours)}h ${Math.floor((overtimeHours % 1) * 60)}m` : '0h 0m'
+    };
   };
 
   const formatDate = (date: string) => {
@@ -197,52 +211,285 @@ function App() {
   const generateDailySummaryImage = async () => {
     if (!filterDate || sortedSchedules.length === 0) return;
 
-    // Crear un elemento temporal con el contenido del resumen
+    // Preparar una ventana popup vacía si el navegador no soporta Web Share API
+    // (esto ayuda a evitar que window.open sea bloqueado por el navegador)
+    const preferWhatsAppFallback = !(navigator && (navigator as any).share);
+    let waPopup: Window | null = null;
+    if (preferWhatsAppFallback) {
+      try { waPopup = window.open('', '_blank'); } catch (e) { waPopup = null; }
+    }
+
+    // Intento 1: capturar la vista principal directamente (ocultando controles interactivos temporalmente)
+    const source = document.querySelector('.max-w-7xl') as HTMLElement | null;
+    if (source) {
+      const interactive = Array.from(source.querySelectorAll<HTMLElement>('button, input, select, textarea, a[role="button"]'));
+      const originals: {el: HTMLElement, visibility: string, display: string}[] = [];
+      interactive.forEach(el => {
+        originals.push({ el, visibility: el.style.visibility || '', display: el.style.display || '' });
+        el.style.visibility = 'hidden';
+      });
+
+      // Ocultar también el panel de filtro para que no aparezca en la captura
+      const filterEl = source.querySelector<HTMLElement>('.bg-gray-50.rounded-lg');
+      if (filterEl) {
+        originals.push({ el: filterEl, visibility: filterEl.style.visibility || '', display: filterEl.style.display || '' });
+        filterEl.style.display = 'none';
+      }
+
+      // Esperar a que las imágenes y fuentes carguen
+      await Promise.all(Array.from(source.querySelectorAll<HTMLImageElement>('img')).map(img => {
+        return new Promise<void>(res => {
+          if (img.complete) return res();
+          img.onload = img.onerror = () => res();
+        });
+      }));
+      try { if ((document as any).fonts && (document as any).fonts.ready) await (document as any).fonts.ready; } catch(e) {}
+
+      // Centrar el encabezado "Horarios del ..." y el contador dentro del área antes de capturar
+      const headings = Array.from(source.querySelectorAll<HTMLElement>('h2'));
+      headings.forEach(h => {
+        if (h.textContent && h.textContent.includes('Horarios del')) {
+          const parent = h.parentElement;
+          if (parent) {
+            parent.style.textAlign = 'center';
+            // si existe un <p> con el conteo, centrarlo también
+            const p = parent.querySelector('p');
+            if (p) p.style.textAlign = 'center';
+          }
+        }
+      });
+
+      // Añadir decoración ligera en la parte superior del área (guirnalda SVG)
+      const container = source.querySelector<HTMLElement>('.bg-white.rounded-xl.shadow-lg') || source.querySelector<HTMLElement>('.max-w-7xl');
+      let decoEl: HTMLElement | null = null;
+      if (container) {
+        decoEl = document.createElement('div');
+        decoEl.style.width = '100%';
+        decoEl.style.display = 'flex';
+        decoEl.style.justifyContent = 'center';
+        decoEl.style.pointerEvents = 'none';
+        decoEl.style.marginBottom = '8px';
+        decoEl.innerHTML = `
+          <svg width="420" height="60" viewBox="0 0 420 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1">
+                <stop offset="0" stop-color="#ef4444" />
+                <stop offset="1" stop-color="#10b981" />
+              </linearGradient>
+              <filter id="s" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.08"/>
+              </filter>
+            </defs>
+            <!-- fondo sutil -->
+            <rect x="10" y="6" width="400" height="36" rx="18" fill="url(#g1)" opacity="0.08" />
+
+            <!-- Cuerdas y adornos -->
+            <g transform="translate(60,0)">
+              <line x1="0" y1="6" x2="0" y2="26" stroke="#7c3aed" stroke-width="1" opacity="0.9" />
+              <g filter="url(#s)">
+                <circle cx="0" cy="36" r="8" fill="#ef4444" />
+                <circle cx="-2" cy="34" r="2" fill="#fff" opacity="0.9" />
+              </g>
+            </g>
+
+            <g transform="translate(210,0)">
+              <line x1="0" y1="6" x2="0" y2="26" stroke="#0ea5a4" stroke-width="1" opacity="0.95" />
+              <g filter="url(#s)">
+                <circle cx="0" cy="36" r="10" fill="#10b981" />
+                <circle cx="3" cy="33" r="2" fill="#fff" opacity="0.9" />
+              </g>
+            </g>
+
+            <g transform="translate(360,0)">
+              <line x1="0" y1="6" x2="0" y2="26" stroke="#f59e0b" stroke-width="1" opacity="0.9" />
+              <g filter="url(#s)">
+                <rect x="-7" y="28" width="14" height="14" rx="7" fill="#f59e0b" />
+                <circle cx="-3" cy="30" r="2" fill="#fff" opacity="0.9" />
+              </g>
+            </g>
+
+            <!-- Pequeños copos decorativos -->
+            <g fill="#fde68a" opacity="0.9">
+              <circle cx="120" cy="18" r="2" />
+              <circle cx="160" cy="22" r="1.5" />
+              <circle cx="300" cy="14" r="1.6" />
+            </g>
+          </svg>
+        `;
+        // Insertar antes del primer hijo útil (tabla o similar)
+        const firstContent = container.querySelector('table, div');
+        if (firstContent && firstContent.parentElement) firstContent.parentElement.insertBefore(decoEl, firstContent);
+      }
+
+      try {
+        const canvas = await html2canvas(source, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true });
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(b => res(b), 'image/png'));
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `horarios-${filterDate}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          // Intentar compartir usando Web Share API con archivo (si está disponible)
+          try {
+            const file = new File([blob], `horarios-${filterDate}.png`, { type: 'image/png' });
+            const nav: any = navigator;
+            if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+              await nav.share({
+                title: `Horarios del ${formatDate(filterDate)}`,
+                text: `Resumen de horarios para ${formatDate(filterDate)}`,
+                files: [file],
+              });
+            } else {
+              // Fallback a WhatsApp mediante enlace de texto (no puede adjuntar archivos desde el navegador)
+              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent('Horarios del ' + formatDate(filterDate) + ' - he descargado la imagen en mi dispositivo.')}`;
+              if (waPopup) {
+                try { waPopup.location = whatsappUrl; } catch (e) { window.open(whatsappUrl, '_blank'); }
+              } else {
+                window.open(whatsappUrl, '_blank');
+              }
+            }
+          } catch (shareErr) {
+            // Silenciar errores de compartido y dejar que el flujo de descarga continúe
+            console.warn('Share failed:', shareErr);
+          }
+        }
+        originals.forEach(o => { o.el.style.visibility = o.visibility; o.el.style.display = o.display; });
+        if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
+        return;
+      } catch (e) {
+        // si falla, restaurar y continuar al fallback
+        originals.forEach(o => { o.el.style.visibility = o.visibility; o.el.style.display = o.display; });
+        if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
+      }
+    }
+
+    // Crear un elemento temporal con clases reutilizables del tema navideño (fallback)
     const summaryElement = document.createElement('div');
-    summaryElement.style.width = '800px';
-    summaryElement.style.padding = '40px';
-    summaryElement.style.background = 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)';
-    summaryElement.style.fontFamily = 'Arial, sans-serif';
-    summaryElement.style.color = '#1f2937';
-    summaryElement.style.borderRadius = '20px';
-    summaryElement.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+    summaryElement.className = 'summary-wrapper';
 
     summaryElement.innerHTML = `
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-size: 32px; font-weight: bold; color: #1e40af; margin: 0; margin-bottom: 10px;">Resumen de Horarios</h1>
-        <h2 style="font-size: 24px; color: #374151; margin: 0;">${formatDate(filterDate)}</h2>
-        <p style="font-size: 16px; color: #6b7280; margin: 10px 0 0 0;">${sortedSchedules.length} empleado${sortedSchedules.length !== 1 ? 's' : ''} programado${sortedSchedules.length !== 1 ? 's' : ''}</p>
-      </div>
-      <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-        <thead style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white;">
-          <tr>
-            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">EMPLEADO</th>
-            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">ENTRADA</th>
-            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">SALIDA</th>
-            <th style="padding: 16px; text-align: left; font-weight: 600; font-size: 14px;">DURACIÓN</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${sortedSchedules.map((schedule, index) => `
-            <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
-              <td style="padding: 16px; font-weight: 600; color: #111827; font-size: 16px;">${schedule.name}</td>
-              <td style="padding: 16px;">
-                <span style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 500;">${formatTime12(schedule.entryTime)}</span>
-              </td>
-              <td style="padding: 16px;">
-                <span style="background: #fed7aa; color: #9a3412; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 500;">${formatTime12(schedule.exitTime)}</span>
-              </td>
-              <td style="padding: 16px; color: #374151; font-weight: 500; font-size: 14px;">${calculateDuration(schedule.entryTime, schedule.exitTime)}</td>
+      <div class="summary-card" style="padding:20px; background: #fff; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08); max-width:1200px; margin:16px auto; font-family:inherit; color:inherit;">
+        <style>
+          :root{ --accent-green:#10b981; --accent-red:#ef4444; }
+          .summary-card{ padding:20px; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08); max-width:1200px; margin:16px auto; }
+          .christmas-header{ display:flex; align-items:center; justify-content:center; gap:12px; padding-bottom:8px; }
+          .christmas-title{ font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:40px; color:#f8fafc; background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%); padding:8px 18px; border-radius:16px; box-shadow:0 10px 18px rgba(2,6,23,0.22); letter-spacing:1px; font-weight:800; -webkit-text-stroke:1px rgba(0,0,0,0.12); display:inline-block; }
+          .christmas-subtitle{ font-size:16px; color:#f3f4f6; margin:8px 0 0 0; font-style:italic; text-shadow:0 2px 6px rgba(0,0,0,0.12); }
+          .summary-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+          .summary-table th{ padding:12px 10px; text-align:left; font-size:12px; color:#374151; }
+          .summary-table td{ padding:12px 10px; color:#0f172a; font-size:13px; }
+          .time-badge{ background:#dbeafe; color:#1e40af; padding:6px 10px; border-radius:18px; display:inline-block; font-weight:700; }
+          .time-badge.exit{ background:#fed7aa; color:#9a3412; font-weight:700; }
+          .summary-footer{ margin-top:18px; text-align:right; font-size:12px; color:#6b7280; }
+          .logo{ width:36px; height:36px; }
+          .christmas-header{ position:relative; overflow:hidden; }
+          .christmas-header .ornament{ position:absolute; top:6px; width:14px; height:14px; border-radius:50%; box-shadow:0 6px 12px rgba(2,6,23,0.12); }
+          .christmas-header .ornament::before{ content:''; position:absolute; left:50%; top:-8px; width:2px; height:10px; background:rgba(255,255,255,0.35); transform:translateX(-50%); border-radius:1px; }
+          .christmas-header .ornament-left{ left:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #ef4444 60%); }
+          .christmas-header .ornament-center{ left:50%; transform:translateX(-50%); background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #10b981 60%); }
+          .christmas-header .ornament-right{ right:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #f59e0b 60%); }
+        </style>
+
+        <div class="christmas-header" style="padding-bottom:8px; text-align:center; position:relative;">
+              <div class="string-lights" aria-hidden>
+                <svg viewBox="0 0 1000 120" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M40 60 C200 10, 400 110, 600 40 C760 5, 920 70, 960 60" stroke="#2d2926" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9" />
+                  <g transform="translate(60,0)">
+                    <circle class="bulb" cx="60" cy="56" r="8" fill="#ef4444" />
+                    <circle class="bulb" cx="140" cy="50" r="8" fill="#10b981" />
+                    <circle class="bulb" cx="240" cy="66" r="8" fill="#f59e0b" />
+                    <circle class="bulb" cx="360" cy="46" r="8" fill="#8b5cf6" />
+                    <circle class="bulb" cx="520" cy="58" r="8" fill="#ec4899" />
+                    <circle class="bulb" cx="700" cy="52" r="8" fill="#3b82f6" />
+                  </g>
+                </svg>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+                <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
+                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#f97373" opacity="0.95" />
+                </svg>
+                <div style="text-align:center;">
+                  <div class="christmas-title">Horario de las mamacitas FRAULOVERS</div>
+                  <div class="christmas-subtitle">¡Organiza tu tiempo con amor, dedicación y un toque de magia navideña! ✨🎄</div>
+                </div>
+                <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
+                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fb7185" opacity="0.95" />
+                </svg>
+              </div>
+            </div>
+
+        <div style="text-align:center; margin:18px 0;">
+          <h2 style="margin:0; font-size:22px; font-weight:700;">Resumen de Horarios</h2>
+          <h3 style="margin:6px 0 0 0; font-size:14px; color:#374151;">${formatDate(filterDate)}</h3>
+          <p style="margin:8px 0 0 0; color:#6b7280;">${sortedSchedules.length} empleado${sortedSchedules.length !== 1 ? 's' : ''} programado${sortedSchedules.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        <table class="summary-table">
+          <thead>
+            <tr style="background:linear-gradient(90deg,#f3f4f6,#e6eef9);">
+              <th>EMPLEADO</th>
+              <th>ENTRADA</th>
+              <th>SALIDA</th>
+              <th style="text-align:center">EFECTIVAS</th>
+              <th style="text-align:center">ALMUERZO</th>
+              <th style="text-align:center">EXTRAS</th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #9ca3af;">
-        Generado por Sistema de Asignación de Horarios - ${new Date().toLocaleString('es-ES')}
+          </thead>
+          <tbody>
+            ${sortedSchedules.map((schedule, index) => {
+              const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+              return `
+              <tr style="background:${index % 2 === 0 ? '#ffffff' : '#fbfcff'};">
+                <td style="font-weight:600;">${schedule.name}</td>
+                <td><span class="time-badge">${formatTime12(schedule.entryTime)}</span></td>
+                <td><span class="time-badge exit">${formatTime12(schedule.exitTime)}</span></td>
+                <td style="text-align:center">${workHours.effectiveHours}h</td>
+                <td style="text-align:center">${workHours.lunchHours}h</td>
+                <td style="text-align:center">${workHours.overtimeHours}h</td>
+              </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div class="summary-footer">Generado por Horario de las mamacitas FRAULOVERS - ${new Date().toLocaleString('es-ES')}</div>
       </div>
     `;
 
-    // Agregar temporalmente al DOM para capturar
+    // Esperar fuentes y aplicar estilos computados, luego agregar al DOM para capturar
+    const inlineAllComputedStyles = (root: HTMLElement) => {
+      const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+      nodes.forEach((node) => {
+        try {
+          const cs = window.getComputedStyle(node);
+          for (let i = 0; i < cs.length; i++) {
+            const prop = cs[i];
+            const val = cs.getPropertyValue(prop);
+            const pr = cs.getPropertyPriority(prop);
+            node.style.setProperty(prop, val, pr);
+          }
+        } catch (e) {
+          // Ignorar cualquier error al leer estilos computados
+        }
+      });
+    };
+
+    try {
+      if ((document as any).fonts && (document as any).fonts.ready) {
+        await (document as any).fonts.ready;
+      }
+    } catch (e) {
+      // Si no está disponible, continuamos
+    }
+
+    inlineAllComputedStyles(summaryElement);
     document.body.appendChild(summaryElement);
 
     try {
@@ -281,7 +528,11 @@ function App() {
           } else {
             // Fallback para navegadores sin Web Share API
             const whatsappUrl = `https://wa.me/?text=Horarios%20del%20${encodeURIComponent(formatDate(filterDate))}`;
-            window.open(whatsappUrl, '_blank');
+            if (waPopup) {
+              try { waPopup.location = whatsappUrl; } catch (e) { window.open(whatsappUrl, '_blank'); }
+            } else {
+              window.open(whatsappUrl, '_blank');
+            }
             alert('Imagen descargada. Abre WhatsApp para compartir.');
           }
         }
@@ -310,32 +561,17 @@ function App() {
       setError('La fecha no puede ser anterior a hoy.');
       return;
     }
-    const entryHourNum = parseInt(form.entryHour);
-    const exitHourNum = parseInt(form.exitHour);
-    if (isNaN(entryHourNum) || entryHourNum < 0 || entryHourNum > 23) {
-      setError('Hora de entrada inválida (0-23).');
+    if (!form.entryTime) {
+      setError('La hora de entrada es obligatoria.');
       return;
     }
-    if (isNaN(exitHourNum) || exitHourNum < 0 || exitHourNum > 23) {
-      setError('Hora de salida inválida (0-23).');
+    if (!form.exitTime) {
+      setError('La hora de salida es obligatoria.');
       return;
     }
-    const entryMinuteNum = parseInt(form.entryMinute);
-    const exitMinuteNum = parseInt(form.exitMinute);
-    if (isNaN(entryMinuteNum) || entryMinuteNum < 0 || entryMinuteNum > 59) {
-      setError('Minutos de entrada inválidos.');
-      return;
-    }
-    if (isNaN(exitMinuteNum) || exitMinuteNum < 0 || exitMinuteNum > 59) {
-      setError('Minutos de salida inválidos.');
-      return;
-    }
-    
-    const entryTime = parseTime12(form.entryHour, form.entryMinute, form.entryPeriod);
-    const exitTime = parseTime12(form.exitHour, form.exitMinute, form.exitPeriod);
     
     // Validar que salida sea después de entrada
-    if (entryTime >= exitTime) {
+    if (form.entryTime >= form.exitTime) {
       setError('La hora de salida debe ser posterior a la hora de entrada.');
       return;
     }
@@ -344,10 +580,10 @@ function App() {
       id: editingSchedule ? editingSchedule.id : Date.now().toString(),
       name: form.name.trim(),
       date: form.date,
-      entryTime,
-      exitTime,
-      entryPeriod: form.entryPeriod,
-      exitPeriod: form.exitPeriod,
+      entryTime: form.entryTime,
+      exitTime: form.exitTime,
+      entryPeriod: form.entryTime < '12:00' ? 'AM' : 'PM',
+      exitPeriod: form.exitTime < '12:00' ? 'AM' : 'PM',
     };
     if (editingSchedule) {
       setSchedules(schedules.map(s => s.id === editingSchedule.id ? schedule : s));
@@ -359,43 +595,19 @@ function App() {
 
   const openModal = (schedule?: Schedule) => {
     if (schedule) {
-      const [eh, em] = schedule.entryTime.split(':');
-      let entryHour = parseInt(eh);
-      let entryPeriod: 'AM' | 'PM' = 'AM';
-      if (entryHour >= 12) {
-        entryPeriod = 'PM';
-        if (entryHour > 12) entryHour -= 12;
-      }
-      if (entryHour === 0) entryHour = 12;
-      const [xh, xm] = schedule.exitTime.split(':');
-      let exitHour = parseInt(xh);
-      let exitPeriod: 'AM' | 'PM' = 'AM';
-      if (exitHour >= 12) {
-        exitPeriod = 'PM';
-        if (exitHour > 12) exitHour -= 12;
-      }
-      if (exitHour === 0) exitHour = 12;
       setForm({
         name: schedule.name,
         date: schedule.date,
-        entryHour: entryHour.toString(),
-        entryMinute: em,
-        entryPeriod,
-        exitHour: exitHour.toString(),
-        exitMinute: xm,
-        exitPeriod,
+        entryTime: schedule.entryTime,
+        exitTime: schedule.exitTime,
       });
       setEditingSchedule(schedule);
     } else {
       setForm({
         name: '',
         date: '',
-        entryHour: '',
-        entryMinute: '',
-        entryPeriod: 'AM',
-        exitHour: '',
-        exitMinute: '',
-        exitPeriod: 'PM',
+        entryTime: '',
+        exitTime: '',
       });
       setEditingSchedule(null);
     }
@@ -415,19 +627,66 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4 md:p-6">
+    <div className="app-root holiday-display min-h-screen p-2 sm:p-4 md:p-6" style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial" }}>
+      <style>{`\
+        .christmas-header{ position:relative; overflow:visible; }\
+        .string-lights{ position:absolute; top:-28px; left:0; width:100%; display:flex; justify-content:center; pointer-events:none; z-index:2; }\
+        .string-lights svg{ width:82%; max-width:820px; height:40px; display:block; }\
+        .string-lights .bulb{ transform-origin:center; filter: drop-shadow(0 2px 6px rgba(2,6,23,0.12)); animation:twinkle 2.2s infinite ease-in-out; }\
+        .string-lights .bulb:nth-child(1){ animation-delay:0s; }\
+        .string-lights .bulb:nth-child(2){ animation-delay:0.18s; }\
+        .string-lights .bulb:nth-child(3){ animation-delay:0.36s; }\
+        .string-lights .bulb:nth-child(4){ animation-delay:0.54s; }\
+        .string-lights .bulb:nth-child(5){ animation-delay:0.72s; }\
+        .string-lights .bulb:nth-child(6){ animation-delay:0.9s; }\
+        @keyframes twinkle{ 0%,100%{ opacity:0.92; transform: translateY(0) scale(1); } 50%{ opacity:1; transform: translateY(-3px) scale(1.06); } }\
+        /* Título estilo "bubble" con contorno y sombra */\
+        .title-wrap{ display:flex; align-items:center; justify-content:center; gap:14px; z-index:3; }\
+        .christmas-title{ font-size:48px; font-weight:800; color:#f8fafc; display:inline-block; padding:8px 18px; border-radius:18px; letter-spacing:1px; line-height:1; -webkit-text-stroke:1px rgba(0,0,0,0.12); text-shadow: 0 10px 18px rgba(2,6,23,0.25), 0 2px 6px rgba(255,255,255,0.06); background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%); transform:translateZ(0); }\
+        .christmas-subtitle{ font-style:italic; font-size:18px; color:#f3f4f6; margin-top:8px; text-shadow:0 2px 6px rgba(0,0,0,0.12); opacity:0.95; }\
+        .heart-icon{ width:36px; height:36px; display:inline-block; filter: drop-shadow(0 6px 12px rgba(2,6,23,0.14)); transform:translateY(2px); }
+      `}</style>
+      {/* Decoraciones navideñas flotantes */}
+      <div className="decor-emoji left">🎄</div>
+      <div className="decor-emoji right">🎁</div>
       <div className="max-w-7xl mx-auto h-full">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden min-h-[calc(100vh-1rem)] sm:min-h-0">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center">Sistema de Asignación de Horarios</h1>
-            <p className="text-blue-100 text-center mt-1 sm:mt-2 text-xs sm:text-sm md:text-base">Gestión profesional de horarios laborales</p>
+          <div className="christmas-header px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
+            <div className="string-lights" aria-hidden>
+              <svg viewBox="0 0 1000 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden>
+                <path d="M40 60 C200 10, 400 110, 600 40 C760 5, 920 70, 960 60" stroke="#2d2926" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9" />
+                <g transform="translate(60,0)">
+                  <circle className="bulb" cx="60" cy="56" r="8" fill="#ef4444" />
+                  <circle className="bulb" cx="140" cy="50" r="8" fill="#10b981" />
+                  <circle className="bulb" cx="240" cy="66" r="8" fill="#f59e0b" />
+                  <circle className="bulb" cx="360" cy="46" r="8" fill="#8b5cf6" />
+                  <circle className="bulb" cx="520" cy="58" r="8" fill="#ec4899" />
+                  <circle className="bulb" cx="700" cy="52" r="8" fill="#3b82f6" />
+                </g>
+              </svg>
+            </div>
+            <span className="ornament ornament-left" aria-hidden></span>
+            <span className="ornament ornament-center" aria-hidden></span>
+            <span className="ornament ornament-right" aria-hidden></span>
+            <div className="title-wrap">
+              <svg className="heart-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
+                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#f97373" opacity="0.95" />
+              </svg>
+              <h1 className="christmas-title">Horario de las mamacitas FRAULOVERS</h1>
+              <svg className="heart-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
+                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fb7185" opacity="0.95" />
+              </svg>
+            </div>
+            <p className="christmas-subtitle text-center mt-1 sm:mt-2 md:text-base">¡Organiza tu tiempo con amor, dedicación y un toque de magia navideña! ✨🎄</p>
           </div>
           
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 min-h-[calc(100vh-8rem)] sm:min-h-0">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
               <button
                 onClick={() => openModal()}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
+                className="button-primary bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
               >
                 <Plus size={20} />
                 Agregar Horario
@@ -450,7 +709,7 @@ function App() {
                     setFilterDate('');
                     setExpandedDates(new Set());
                   }}
-                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 sm:py-2 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 w-full sm:w-auto min-h-[44px] touch-manipulation"
+                  className="button-secondary bg-white text-red-600 font-semibold py-3 sm:py-2 px-4 sm:px-4 rounded-lg shadow-sm transition-all duration-200 w-full sm:w-auto min-h-[44px] touch-manipulation"
                 >
                   Ver Todos
                 </button>
@@ -472,7 +731,7 @@ function App() {
                     </div>
                     <button
                       onClick={generateDailySummaryImage}
-                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm min-h-[44px] touch-manipulation"
+                      className="button-primary bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm min-h-[44px] touch-manipulation"
                     >
                       📸 Generar Resumen
                     </button>
@@ -482,14 +741,16 @@ function App() {
               
               {/* Tabla para desktop */}
               <div className="block overflow-x-auto">
-                <table className="min-w-full">
+                <table className="min-w-full summary-table">
                   <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Empleado</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Entrada</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Salida</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Duración</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Horas Efectivas</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Almuerzo</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Extras</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
@@ -511,7 +772,22 @@ function App() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                            {calculateDuration(schedule.entryTime, schedule.exitTime)}
+                            {(() => {
+                              const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                              return workHours.formattedEffective;
+                            })()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {(() => {
+                              const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                              return workHours.lunchHours > 0 ? `${workHours.lunchHours}h` : '-';
+                            })()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {(() => {
+                              const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                              return workHours.overtimeHours > 0 ? workHours.formattedOvertime : '-';
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex gap-2">
@@ -539,7 +815,7 @@ function App() {
                       Object.entries(groupedSchedules).map(([date, daySchedules]) => (
                         <React.Fragment key={date}>
                           <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-colors duration-150">
-                            <td colSpan={6} className="px-6 py-4">
+                            <td colSpan={8} className="px-6 py-4">
                               <button
                                 onClick={() => toggleDateExpansion(date)}
                                 className="flex items-center justify-between w-full text-left"
@@ -571,7 +847,22 @@ function App() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                {calculateDuration(schedule.entryTime, schedule.exitTime)}
+                                {(() => {
+                                  const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                                  return workHours.formattedEffective;
+                                })()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {(() => {
+                                  const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                                  return workHours.lunchHours > 0 ? `${workHours.lunchHours}h` : '-';
+                                })()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {(() => {
+                                  const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+                                  return workHours.overtimeHours > 0 ? workHours.formattedOvertime : '-';
+                                })()}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex gap-2">
@@ -615,7 +906,7 @@ function App() {
                       </div>
                       <button
                         onClick={generateDailySummaryImage}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] touch-manipulation w-full"
+                        className="button-primary bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm min-h-[44px] touch-manipulation w-full"
                       >
                         📸 Generar Resumen
                       </button>
@@ -665,9 +956,19 @@ function App() {
                           </div>
                         </div>
                         
-                        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Duración</p>
-                          <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-gray-100">
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Efectivas</p>
+                            <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).effectiveHours}h</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Almuerzo</p>
+                            <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).lunchHours}h</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Extras</p>
+                            <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).overtimeHours}h</p>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -730,9 +1031,19 @@ function App() {
                               </div>
                             </div>
                             
-                            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Duración</p>
-                              <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateDuration(schedule.entryTime, schedule.exitTime)}</p>
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-gray-100">
+                              <div className="text-center">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Efectivas</p>
+                                <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).effectiveHours}h</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Almuerzo</p>
+                                <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).lunchHours}h</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Extras</p>
+                                <p className="text-sm sm:text-sm font-semibold text-gray-900">{calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod).overtimeHours}h</p>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -748,8 +1059,20 @@ function App() {
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-full sm:max-w-md w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl">
-                <h3 className="text-lg sm:text-xl font-bold text-white text-center">
+              <div className="christmas-header px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl" style={{ position: 'relative', overflow: 'visible' }}>
+                <div className="string-lights" aria-hidden>
+                  <svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <path d="M10 40 C120 5, 240 75, 360 30 C460 0, 540 50, 590 40" stroke="#2d2926" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.9" />
+                    <g transform="translate(10,0)">
+                      <circle className="bulb" cx="40" cy="38" r="6" fill="#ef4444" />
+                      <circle className="bulb" cx="110" cy="30" r="6" fill="#10b981" />
+                      <circle className="bulb" cx="190" cy="46" r="6" fill="#f59e0b" />
+                      <circle className="bulb" cx="280" cy="28" r="6" fill="#8b5cf6" />
+                      <circle className="bulb" cx="370" cy="40" r="6" fill="#3b82f6" />
+                    </g>
+                  </svg>
+                </div>
+                <h3 className="christmas-title text-center text-sm sm:text-lg">
                   {editingSchedule ? 'Editar Horario' : 'Agregar Nuevo Horario'}
                 </h3>
               </div>
@@ -784,97 +1107,26 @@ function App() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora Entrada</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora de Entrada</label>
                       <input
-                        type="number"
-                        min="0"
-                        max="23"
-                        value={form.entryHour}
-                        onChange={(e) => setForm({...form, entryHour: e.target.value})}
-                        onBlur={(e) => {
-                          const val = e.target.value;
-                          if (val) {
-                            const { hour, period } = convertTo12Hour(val);
-                            setForm({...form, entryHour: hour, entryPeriod: period});
-                          }
-                        }}
-                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                        placeholder="0-23"
+                        type="time"
+                        value={form.entryTime}
+                        onChange={(e) => setForm({...form, entryTime: e.target.value})}
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Minuto</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora de Salida</label>
                       <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={form.entryMinute}
-                        onChange={(e) => setForm({...form, entryMinute: e.target.value})}
+                        type="time"
+                        value={form.exitTime}
+                        onChange={(e) => setForm({...form, exitTime: e.target.value})}
                         className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                        placeholder="0-59"
                         required
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">AM/PM</label>
-                      <select
-                        value={form.entryPeriod}
-                        onChange={(e) => setForm({...form, entryPeriod: e.target.value as 'AM' | 'PM'})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora Salida</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="23"
-                        value={form.exitHour}
-                        onChange={(e) => setForm({...form, exitHour: e.target.value})}
-                        onBlur={(e) => {
-                          const val = e.target.value;
-                          if (val) {
-                            const { hour, period } = convertTo12Hour(val);
-                            setForm({...form, exitHour: hour, exitPeriod: period});
-                          }
-                        }}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                        placeholder="0-23"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Minuto</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={form.exitMinute}
-                        onChange={(e) => setForm({...form, exitMinute: e.target.value})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                        placeholder="0-59"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">AM/PM</label>
-                      <select
-                        value={form.exitPeriod}
-                        onChange={(e) => setForm({...form, exitPeriod: e.target.value as 'AM' | 'PM'})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
                     </div>
                   </div>
                   

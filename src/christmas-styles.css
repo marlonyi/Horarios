@@ -1,0 +1,213 @@
+/* Estilos navideños reutilizables */
+:root {
+  --accent-red: #dc2626;
+  --accent-pink: #db2777;
+  --accent-green: #16a34a;
+  --soft-bg: linear-gradient(135deg, #fef7ed 0%, #fdf2f8 50%, #f0fdf4 100%);
+}
+
+/* Fondo global para la app en modo navideño */
+.app-root {
+  background: linear-gradient(180deg, #fffaf0 0%, #f4fbf6 30%, #eef6ff 100%);
+}
+
+/* Resumen (export) wrapper que usa la misma paleta */
+.summary-wrapper {
+  width: 900px;
+  padding: 36px;
+  background: var(--soft-bg);
+  font-family: "Quicksand", "Nunito", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial;
+  color: #0f172a;
+  border-radius: 16px;
+  box-shadow: 0 24px 40px rgba(2, 6, 23, 0.08);
+}
+
+.summary-wrapper .summary-footer {
+  text-align: center;
+  color: #6b7280;
+  margin-top: 22px;
+  font-size: 12px;
+}
+
+/* Decoraciones flotantes (si se usan) */
+.floating-decoration {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.85;
+  animation: float 6s ease-in-out infinite;
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
+/* Header temático */
+.christmas-header {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    rgba(220, 38, 38, 0.98) 0%,
+    rgba(219, 39, 119, 0.95) 45%,
+    rgba(22, 163, 74, 0.95) 100%
+  );
+  color: white;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.12);
+}
+.christmas-title {
+  font-family: "Inter", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 8px 28px rgba(2, 6, 23, 0.16);
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.02)
+  );
+}
+.christmas-subtitle {
+  font-size: 0.95rem;
+  opacity: 0.98;
+  margin-top: 6px;
+}
+
+/* Adornos colgantes dentro del header */
+.christmas-header .ornament {
+  position: absolute;
+  top: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.18);
+}
+.christmas-header .ornament::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+.christmas-header .ornament-left {
+  left: 18px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff 0%,
+    rgba(255, 255, 255, 0.12) 20%,
+    #ef4444 60%
+  );
+}
+.christmas-header .ornament-center {
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff 0%,
+    rgba(255, 255, 255, 0.12) 20%,
+    #10b981 60%
+  );
+}
+.christmas-header .ornament-right {
+  right: 18px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff 0%,
+    rgba(255, 255, 255, 0.12) 20%,
+    #f59e0b 60%
+  );
+}
+
+/* Botones temáticos reutilizables (para fallback si no usas Tailwind en algún elemento) */
+.button-primary {
+  background: linear-gradient(90deg, var(--accent-green), #10b981);
+  color: white;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
+  border: none;
+}
+.button-secondary {
+  background: #fff;
+  color: var(--accent-red);
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.6rem;
+  border: 2px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Tabla navideña para el reporte generado */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.summary-table th {
+  background: linear-gradient(
+    135deg,
+    var(--accent-red),
+    var(--accent-pink) 50%,
+    var(--accent-green)
+  );
+  color: #fff;
+  padding: 14px;
+  text-align: left;
+  font-weight: 700;
+}
+.summary-table td {
+  padding: 14px;
+  border-bottom: 1px solid #eef2f7;
+  color: #0f172a;
+}
+.summary-table tr:nth-child(even) {
+  background: #fffdfd;
+}
+
+/* Cards de estadísticas */
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 20px rgba(2, 6, 23, 0.04);
+}
+
+/* Decoraciones navideñas simples (emoji-based) */
+.decor-emoji {
+  position: fixed;
+  z-index: 40;
+  font-size: 34px;
+  pointer-events: none;
+  opacity: 0.95;
+  transform: translateY(0);
+  animation: float 6s ease-in-out infinite;
+}
+.decor-emoji.left {
+  left: 18px;
+  top: 60px;
+}
+.decor-emoji.right {
+  right: 18px;
+  top: 60px;
+}
+
+/* Ajustes responsivos simples */
+@media (max-width: 640px) {
+  .christmas-title {
+    font-size: 1.25rem;
+  }
+}

@@ -1,0 +1,23 @@
+/* Google Fonts: usar Inter como fuente principal para mejor legibilidad */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Nunito:wght@400;600;700;800&display=swap");
+
+:root {
+  --christmas-accent-1: #dc2626; /* rojo */
+  --christmas-accent-2: #db2777; /* rosa */
+  --christmas-accent-3: #16a34a; /* verde */
+  --bg-soft: #fef7ed;
+  --card-bg: #ffffff;
+}
+
+/* Tipografías globales (se usan en elementos creados dinámicamente) */
+body,
+.app-root {
+  font-family: "Inter", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+}
+
+.holiday-display {
+  /* Mantener aspecto festivo pero legible: usar Inter para encabezados y Nunito como fallback */
+  font-family: "Inter", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+}

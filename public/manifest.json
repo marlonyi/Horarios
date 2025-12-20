@@ -1,7 +1,7 @@
 {
-  "name": "Sistema de Horarios",
-  "short_name": "Horarios",
-  "description": "Gestión profesional de horarios laborales",
+  "name": "Horario de las mamacitas FRAULOVERS",
+  "short_name": "FRAULOVERS",
+  "description": "Horario de las mamacitas FRAULOVERS - Gestión profesional de horarios laborales",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
