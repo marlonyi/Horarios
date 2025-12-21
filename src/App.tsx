@@ -222,11 +222,27 @@ function App() {
     // Intento 1: capturar la vista principal directamente (ocultando controles interactivos temporalmente)
     const source = document.querySelector('.max-w-7xl') as HTMLElement | null;
     if (source) {
+      // Guardar estilos originales del contenedor
+      const originalMaxWidth = source.style.maxWidth;
+      const originalWidth = source.style.width;
+      const originalMinHeight = source.style.minHeight;
+      
+      // Hacer el contenedor más ancho para que el título quepa
+      source.style.maxWidth = '1200px';
+      source.style.width = '1200px';
+      source.style.minHeight = '800px'; // Altura suficiente
       const interactive = Array.from(source.querySelectorAll<HTMLElement>('button, input, select, textarea, a[role="button"]'));
       const originals: {el: HTMLElement, visibility: string, display: string}[] = [];
       interactive.forEach(el => {
         originals.push({ el, visibility: el.style.visibility || '', display: el.style.display || '' });
         el.style.visibility = 'hidden';
+      });
+
+      // Ocultar también las decoraciones navideñas
+      const decorations = Array.from(source.querySelectorAll<HTMLElement>('.string-lights, .decor-emoji, .ornament'));
+      decorations.forEach(el => {
+        originals.push({ el, visibility: el.style.visibility || '', display: el.style.display || '' });
+        el.style.display = 'none';
       });
 
       // Ocultar también el panel de filtro para que no aparezca en la captura
@@ -259,6 +275,57 @@ function App() {
         }
       });
 
+      // Centrar el título principal del header
+      const header = source.querySelector('.christmas-header') as HTMLElement;
+      if (header) {
+        header.style.textAlign = 'center';
+        // Crear versión alternativa del título para la captura (más compatible con html2canvas)
+        const title = header.querySelector('.christmas-title') as HTMLElement;
+        if (title) {
+          // Guardar estilos originales
+          originals.push({ el: title, visibility: '', display: '' });
+          (originals[originals.length - 1] as any).innerHTML = title.innerHTML;
+          (originals[originals.length - 1] as any).className = title.className;
+          (originals[originals.length - 1] as any).style = { ...title.style };
+
+          // Crear título con estilo femenino y novedoso similar a la vista principal
+          title.innerHTML = `🎅 ${title.innerHTML} 🎅`; // Agregar Papá Noel a cada costado
+          title.className = 'capture-title'; // Cambiar clase temporalmente
+          title.style.cssText = `
+            font-size: 2.8rem !important;
+            font-weight: 600 !important;
+            font-family: 'Lucida Handwriting', 'Brush Script MT', cursive !important;
+            font-style: italic !important;
+            background: linear-gradient(135deg, #f472b6 0%, #fb7185 40%, #10b981 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            text-shadow:
+              0 2px 4px rgba(0, 0, 0, 0.1),
+              0 4px 8px rgba(245, 158, 11, 0.2) !important;
+            box-shadow:
+              0 8px 32px rgba(245, 158, 11, 0.3),
+              0 0 64px rgba(16, 185, 129, 0.2) !important;
+            animation: none !important;
+            padding: 1.5rem 3rem !important;
+            border-radius: 2rem !important;
+            display: inline-block !important;
+            margin: 0 auto !important;
+            border: none !important;
+            position: relative !important;
+            letter-spacing: 0.5px !important;
+            text-align: center !important;
+            line-height: 1.3 !important;
+            text-transform: none !important;
+          `;
+          // Agregar efecto de brillo sutil como en la vista principal
+          title.style.filter = 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.4))';
+        }
+        // Guardar el estilo original del header
+        originals.push({ el: header, visibility: '', display: '' });
+        (originals[originals.length - 1] as any).textAlign = header.style.textAlign;
+      }
+
       // Añadir decoración ligera en la parte superior del área (guirnalda SVG)
       const container = source.querySelector<HTMLElement>('.bg-white.rounded-xl.shadow-lg') || source.querySelector<HTMLElement>('.max-w-7xl');
       let decoEl: HTMLElement | null = null;
@@ -268,54 +335,8 @@ function App() {
         decoEl.style.display = 'flex';
         decoEl.style.justifyContent = 'center';
         decoEl.style.pointerEvents = 'none';
-        decoEl.style.marginBottom = '8px';
-        decoEl.innerHTML = `
-          <svg width="420" height="60" viewBox="0 0 420 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-            <defs>
-              <linearGradient id="g1" x1="0" x2="1">
-                <stop offset="0" stop-color="#ef4444" />
-                <stop offset="1" stop-color="#10b981" />
-              </linearGradient>
-              <filter id="s" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.08"/>
-              </filter>
-            </defs>
-            <!-- fondo sutil -->
-            <rect x="10" y="6" width="400" height="36" rx="18" fill="url(#g1)" opacity="0.08" />
-
-            <!-- Cuerdas y adornos -->
-            <g transform="translate(60,0)">
-              <line x1="0" y1="6" x2="0" y2="26" stroke="#7c3aed" stroke-width="1" opacity="0.9" />
-              <g filter="url(#s)">
-                <circle cx="0" cy="36" r="8" fill="#ef4444" />
-                <circle cx="-2" cy="34" r="2" fill="#fff" opacity="0.9" />
-              </g>
-            </g>
-
-            <g transform="translate(210,0)">
-              <line x1="0" y1="6" x2="0" y2="26" stroke="#0ea5a4" stroke-width="1" opacity="0.95" />
-              <g filter="url(#s)">
-                <circle cx="0" cy="36" r="10" fill="#10b981" />
-                <circle cx="3" cy="33" r="2" fill="#fff" opacity="0.9" />
-              </g>
-            </g>
-
-            <g transform="translate(360,0)">
-              <line x1="0" y1="6" x2="0" y2="26" stroke="#f59e0b" stroke-width="1" opacity="0.9" />
-              <g filter="url(#s)">
-                <rect x="-7" y="28" width="14" height="14" rx="7" fill="#f59e0b" />
-                <circle cx="-3" cy="30" r="2" fill="#fff" opacity="0.9" />
-              </g>
-            </g>
-
-            <!-- Pequeños copos decorativos -->
-            <g fill="#fde68a" opacity="0.9">
-              <circle cx="120" cy="18" r="2" />
-              <circle cx="160" cy="22" r="1.5" />
-              <circle cx="300" cy="14" r="1.6" />
-            </g>
-          </svg>
-        `;
+        decoEl.style.marginBottom = '0px';
+        decoEl.innerHTML = `<img src="/imagen.png" style="width:100%; height:250px; object-fit:cover;" />`;
         // Insertar antes del primer hijo útil (tabla o similar)
         const firstContent = container.querySelector('table, div');
         if (firstContent && firstContent.parentElement) firstContent.parentElement.insertBefore(decoEl, firstContent);
@@ -358,12 +379,40 @@ function App() {
             console.warn('Share failed:', shareErr);
           }
         }
-        originals.forEach(o => { o.el.style.visibility = o.visibility; o.el.style.display = o.display; });
+        originals.forEach(o => { 
+          o.el.style.visibility = o.visibility; 
+          o.el.style.display = o.display; 
+          if ((o as any).textAlign !== undefined) o.el.style.textAlign = (o as any).textAlign;
+          // Restaurar título completamente
+          if (o.el.classList.contains('christmas-title') || o.el.classList.contains('capture-title')) {
+            if ((o as any).innerHTML !== undefined) o.el.innerHTML = (o as any).innerHTML;
+            if ((o as any).className !== undefined) o.el.className = (o as any).className;
+            if ((o as any).style !== undefined) Object.assign(o.el.style, (o as any).style);
+          }
+        });
+        // Restaurar estilos originales del contenedor
+        source.style.maxWidth = originalMaxWidth;
+        source.style.width = originalWidth;
+        source.style.minHeight = originalMinHeight;
         if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
         return;
       } catch (e) {
         // si falla, restaurar y continuar al fallback
-        originals.forEach(o => { o.el.style.visibility = o.visibility; o.el.style.display = o.display; });
+        originals.forEach(o => { 
+          o.el.style.visibility = o.visibility; 
+          o.el.style.display = o.display; 
+          if ((o as any).textAlign !== undefined) o.el.style.textAlign = (o as any).textAlign;
+          // Restaurar título completamente
+          if (o.el.classList.contains('christmas-title') || o.el.classList.contains('capture-title')) {
+            if ((o as any).innerHTML !== undefined) o.el.innerHTML = (o as any).innerHTML;
+            if ((o as any).className !== undefined) o.el.className = (o as any).className;
+            if ((o as any).style !== undefined) Object.assign(o.el.style, (o as any).style);
+          }
+        });
+        // Restaurar estilos originales del contenedor
+        source.style.maxWidth = originalMaxWidth;
+        source.style.width = originalWidth;
+        source.style.minHeight = originalMinHeight;
         if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
       }
     }
@@ -378,8 +427,30 @@ function App() {
           :root{ --accent-green:#10b981; --accent-red:#ef4444; }
           .summary-card{ padding:20px; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08); max-width:1200px; margin:16px auto; }
           .christmas-header{ display:flex; align-items:center; justify-content:center; gap:12px; padding-bottom:8px; }
-          .christmas-title{ font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; font-size:40px; color:#f8fafc; background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%); padding:8px 18px; border-radius:16px; box-shadow:0 10px 18px rgba(2,6,23,0.22); letter-spacing:1px; font-weight:800; -webkit-text-stroke:1px rgba(0,0,0,0.12); display:inline-block; }
-          .christmas-subtitle{ font-size:16px; color:#f3f4f6; margin:8px 0 0 0; font-style:italic; text-shadow:0 2px 6px rgba(0,0,0,0.12); }
+          .christmas-title{
+            font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+            font-size: clamp(24px, 5vw, 40px);
+            color:#f8fafc;
+            background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%);
+            padding: clamp(6px, 2vw, 8px) clamp(12px, 3vw, 18px);
+            border-radius: clamp(12px, 3vw, 16px);
+            box-shadow:0 10px 18px rgba(2,6,23,0.22);
+            letter-spacing:1px;
+            font-weight:800;
+            -webkit-text-stroke:1px rgba(0,0,0,0.12);
+            display:inline-block;
+            line-height: 1.2;
+            word-wrap: break-word;
+            max-width: 90vw;
+          }
+          .christmas-subtitle{
+            font-size: clamp(12px, 2.5vw, 16px);
+            color:#f3f4f6;
+            margin: clamp(4px, 1vw, 8px) 0 0 0;
+            font-style:italic;
+            text-shadow:0 2px 6px rgba(0,0,0,0.12);
+            line-height: 1.3;
+          }
           .summary-table{ width:100%; border-collapse:collapse; margin-top:10px; }
           .summary-table th{ padding:12px 10px; text-align:left; font-size:12px; color:#374151; }
           .summary-table td{ padding:12px 10px; color:#0f172a; font-size:13px; }
@@ -393,32 +464,78 @@ function App() {
           .christmas-header .ornament-left{ left:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #ef4444 60%); }
           .christmas-header .ornament-center{ left:50%; transform:translateX(-50%); background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #10b981 60%); }
           .christmas-header .ornament-right{ right:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #f59e0b 60%); }
+
+          /* Elementos decorativos responsive */
+          .christmas-header .snowflake{
+            position:absolute;
+            color:#ffffff;
+            opacity:0.8;
+            font-size: clamp(12px, 3vw, 16px);
+            animation:snowfall 3s ease-in-out infinite;
+            display: none;
+          }
+          .christmas-header .snowflake:nth-child(1){ top:10px; left:10%; animation-delay:0s; }
+          .christmas-header .snowflake:nth-child(2){ top:15px; left:25%; animation-delay:1s; }
+          .christmas-header .snowflake:nth-child(3){ top:8px; left:75%; animation-delay:2s; }
+          .christmas-header .snowflake:nth-child(4){ top:20px; left:90%; animation-delay:0.5s; }
+
+          .christmas-header .star-decoration{
+            position:absolute;
+            color:#fbbf24;
+            opacity:0.9;
+            font-size: clamp(10px, 2.5vw, 14px);
+            animation:twinkle 2s ease-in-out infinite;
+            display: none;
+          }
+          .christmas-header .star-decoration:nth-child(1){ top:12px; left:5%; animation-delay:0.5s; }
+          .christmas-header .star-decoration:nth-child(2){ top:18px; left:95%; animation-delay:1.5s; }
+
+          .christmas-header .gift-decoration{
+            position:absolute;
+            color:#f472b6;
+            opacity:0.85;
+            font-size: clamp(8px, 2vw, 12px);
+            animation:bounce 2.5s ease-in-out infinite;
+            display: none;
+          }
+          .christmas-header .gift-decoration:nth-child(1){ top:25px; left:15%; animation-delay:0s; }
+          .christmas-header .gift-decoration:nth-child(2){ top:30px; left:85%; animation-delay:1s; }
+
+          /* Mostrar decoraciones solo en pantallas medianas y grandes */
+          @media (min-width: 768px) {
+            .christmas-header .snowflake,
+            .christmas-header .star-decoration,
+            .christmas-header .gift-decoration {
+              display: block;
+            }
+          }
+
+          @keyframes snowfall{ 0%,100%{ transform:translateY(0px) rotate(0deg); } 50%{ transform:translateY(10px) rotate(180deg); } }
+          @keyframes twinkle{ 0%,100%{ opacity:0.9; transform:scale(1); } 50%{ opacity:0.3; transform:scale(1.2); } }
+          @keyframes bounce{ 0%,100%{ transform:translateY(0px); } 50%{ transform:translateY(-5px); } }
         </style>
 
-        <div class="christmas-header" style="padding-bottom:8px; text-align:center; position:relative;">
-              <div class="string-lights" aria-hidden>
-                <svg viewBox="0 0 1000 120" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                  <path d="M40 60 C200 10, 400 110, 600 40 C760 5, 920 70, 960 60" stroke="#2d2926" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9" />
-                  <g transform="translate(60,0)">
-                    <circle class="bulb" cx="60" cy="56" r="8" fill="#ef4444" />
-                    <circle class="bulb" cx="140" cy="50" r="8" fill="#10b981" />
-                    <circle class="bulb" cx="240" cy="66" r="8" fill="#f59e0b" />
-                    <circle class="bulb" cx="360" cy="46" r="8" fill="#8b5cf6" />
-                    <circle class="bulb" cx="520" cy="58" r="8" fill="#ec4899" />
-                    <circle class="bulb" cx="700" cy="52" r="8" fill="#3b82f6" />
-                  </g>
-                </svg>
-              </div>
-              <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
-                <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+        <div class="christmas-header" style="padding-bottom: clamp(8px, 2vw, 16px); text-align:center; position:relative;">
+              <!-- Elementos decorativos navideños -->
+              <div class="snowflake">❄️</div>
+              <div class="snowflake">❄️</div>
+              <div class="snowflake">❄️</div>
+              <div class="snowflake">❄️</div>
+              <div class="star-decoration">⭐</div>
+              <div class="star-decoration">⭐</div>
+              <div class="gift-decoration">🎁</div>
+              <div class="gift-decoration">🎁</div>
+
+              <div style="display:flex; align-items:center; justify-content:center; gap: clamp(8px, 2vw, 12px); flex-wrap: wrap;">
+                <svg width="clamp(24px, 8vw, 36px)" height="clamp(24px, 8vw, 36px)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden style="flex-shrink: 0;">
                   <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
                   <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#f97373" opacity="0.95" />
                 </svg>
-                <div style="text-align:center;">
+                <div style="text-align:center; flex: 1; min-width: 0;">
                   <div class="christmas-title">Horario de las mamacitas FRAULOVERS</div>
                   <div class="christmas-subtitle">¡Organiza tu tiempo con amor, dedicación y un toque de magia navideña! ✨🎄</div>
                 </div>
-                <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <svg width="clamp(24px, 8vw, 36px)" height="clamp(24px, 8vw, 36px)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden style="flex-shrink: 0;">
                   <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
                   <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fb7185" opacity="0.95" />
                 </svg>
@@ -642,29 +759,40 @@ function App() {
         @keyframes twinkle{ 0%,100%{ opacity:0.92; transform: translateY(0) scale(1); } 50%{ opacity:1; transform: translateY(-3px) scale(1.06); } }\
         /* Título estilo "bubble" con contorno y sombra */\
         .title-wrap{ display:flex; align-items:center; justify-content:center; gap:14px; z-index:3; }\
-        .christmas-title{ font-size:48px; font-weight:800; color:#f8fafc; display:inline-block; padding:8px 18px; border-radius:18px; letter-spacing:1px; line-height:1; -webkit-text-stroke:1px rgba(0,0,0,0.12); text-shadow: 0 10px 18px rgba(2,6,23,0.25), 0 2px 6px rgba(255,255,255,0.06); background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%); transform:translateZ(0); }\
+        .christmas-title{ 
+          font-size:48px; 
+          font-weight:800; 
+          color:#f8fafc; 
+          display:inline-block; 
+          padding:12px 24px; 
+          border-radius:20px; 
+          letter-spacing:1px; 
+          line-height:1; 
+          -webkit-text-stroke:1px rgba(0,0,0,0.12); 
+          text-shadow: 
+            0 12px 20px rgba(2,6,23,0.3), 
+            0 4px 8px rgba(255,255,255,0.1),
+            0 2px 4px rgba(239, 68, 68, 0.3),
+            0 -2px 4px rgba(16, 185, 129, 0.2);
+          background: linear-gradient(135deg, #f472b6 0%, #fb7185 30%, #f59e0b 60%, #10b981 100%);
+          box-shadow: 
+            0 15px 25px rgba(2,6,23,0.25),
+            inset 0 2px 4px rgba(255,255,255,0.2),
+            0 0 20px rgba(245, 158, 11, 0.3);
+          position: relative;
+          transform: translateZ(0);
+          animation: christmas-glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes christmas-glow {
+          0% { box-shadow: 0 15px 25px rgba(2,6,23,0.25), inset 0 2px 4px rgba(255,255,255,0.2), 0 0 20px rgba(245, 158, 11, 0.3); }
+          100% { box-shadow: 0 15px 25px rgba(2,6,23,0.25), inset 0 2px 4px rgba(255,255,255,0.2), 0 0 30px rgba(245, 158, 11, 0.5), 0 0 40px rgba(16, 185, 129, 0.2); }
+        }\
         .christmas-subtitle{ font-style:italic; font-size:18px; color:#f3f4f6; margin-top:8px; text-shadow:0 2px 6px rgba(0,0,0,0.12); opacity:0.95; }\
         .heart-icon{ width:36px; height:36px; display:inline-block; filter: drop-shadow(0 6px 12px rgba(2,6,23,0.14)); transform:translateY(2px); }
       `}</style>
-      {/* Decoraciones navideñas flotantes */}
-      <div className="decor-emoji left">🎄</div>
-      <div className="decor-emoji right">🎁</div>
       <div className="max-w-7xl mx-auto h-full">
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden min-h-[calc(100vh-1rem)] sm:min-h-0">
           <div className="christmas-header px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
-            <div className="string-lights" aria-hidden>
-              <svg viewBox="0 0 1000 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden>
-                <path d="M40 60 C200 10, 400 110, 600 40 C760 5, 920 70, 960 60" stroke="#2d2926" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.9" />
-                <g transform="translate(60,0)">
-                  <circle className="bulb" cx="60" cy="56" r="8" fill="#ef4444" />
-                  <circle className="bulb" cx="140" cy="50" r="8" fill="#10b981" />
-                  <circle className="bulb" cx="240" cy="66" r="8" fill="#f59e0b" />
-                  <circle className="bulb" cx="360" cy="46" r="8" fill="#8b5cf6" />
-                  <circle className="bulb" cx="520" cy="58" r="8" fill="#ec4899" />
-                  <circle className="bulb" cx="700" cy="52" r="8" fill="#3b82f6" />
-                </g>
-              </svg>
-            </div>
             <span className="ornament ornament-left" aria-hidden></span>
             <span className="ornament ornament-center" aria-hidden></span>
             <span className="ornament ornament-right" aria-hidden></span>
