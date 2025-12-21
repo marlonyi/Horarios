@@ -82,6 +82,20 @@ function App() {
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [showReportsModal, setShowReportsModal] = useState(false);
+  const [reportType, setReportType] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
+  const [reportBaseDate, setReportBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
+
+  const toggleEmployeeDetails = (employeeName: string) => {
+    const newExpanded = new Set(expandedEmployees);
+    if (newExpanded.has(employeeName)) {
+      newExpanded.delete(employeeName);
+    } else {
+      newExpanded.add(employeeName);
+    }
+    setExpandedEmployees(newExpanded);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -125,6 +139,16 @@ function App() {
           { id: '29', name: 'Keilly', date: '2025-12-20', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           { id: '30', name: 'Kasiel', date: '2025-12-20', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           { id: '31', name: 'Yina', date: '2025-12-20', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          // Día 21
+          { id: '32', name: 'Danna', date: '2025-12-21', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '33', name: 'Julie', date: '2025-12-21', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '34', name: 'Andrea', date: '2025-12-21', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '35', name: 'Yina', date: '2025-12-21', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '36', name: 'Gloria', date: '2025-12-21', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '37', name: 'Keilly', date: '2025-12-21', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '38', name: 'Katia', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '39', name: 'Paola', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '40', name: 'Kendry', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
         ];
         setSchedules(testData);
       } else {
@@ -723,6 +747,341 @@ function App() {
     );
   };
 
+  // Calcular estadísticas de trabajo por empleado y período
+  const calculateEmployeeStats = (employeeName: string, startDate: string, endDate: string) => {
+    const employeeSchedules = schedules.filter(schedule =>
+      schedule.name.toLowerCase() === employeeName.toLowerCase() &&
+      schedule.date >= startDate &&
+      schedule.date <= endDate
+    );
+
+    let totalHours = 0;
+    let effectiveHours = 0;
+    let overtimeHours = 0;
+    let lunchHours = 0;
+    const workDays: string[] = [];
+    const workDetails: Array<{
+      date: string;
+      entryTime: string;
+      exitTime: string;
+      entryPeriod: string;
+      exitPeriod: string;
+      totalHours: number;
+      effectiveHours: number;
+      overtimeHours: number;
+      lunchHours: number;
+    }> = [];
+
+    employeeSchedules.forEach(schedule => {
+      const workStats = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+      totalHours += workStats.totalHours;
+      effectiveHours += workStats.effectiveHours;
+      overtimeHours += workStats.overtimeHours;
+      lunchHours += workStats.lunchHours;
+      workDays.push(schedule.date);
+
+      workDetails.push({
+        date: schedule.date,
+        entryTime: schedule.entryTime,
+        exitTime: schedule.exitTime,
+        entryPeriod: schedule.entryPeriod,
+        exitPeriod: schedule.exitPeriod,
+        totalHours: workStats.totalHours,
+        effectiveHours: workStats.effectiveHours,
+        overtimeHours: workStats.overtimeHours,
+        lunchHours: workStats.lunchHours
+      });
+    });
+
+    return {
+      employeeName,
+      workDays: workDays.length,
+      workDaysList: workDays,
+      workDetails,
+      totalHours: Math.round(totalHours * 100) / 100,
+      effectiveHours: Math.round(effectiveHours * 100) / 100,
+      overtimeHours: Math.round(overtimeHours * 100) / 100,
+      lunchHours: Math.round(lunchHours * 100) / 100,
+      avgDailyHours: workDays.length > 0 ? Math.round((totalHours / workDays.length) * 100) / 100 : 0
+    };
+  };
+
+  // Generar reporte por período
+  const generatePeriodReport = (periodType: 'daily' | 'weekly' | 'biweekly' | 'monthly', startDate?: string) => {
+    const employees = getUniqueEmployees();
+    let reportStartDate: string;
+    let reportEndDate: string;
+    let periodName: string;
+
+    // Crear fecha base sin problemas de zona horaria
+    let baseDate: Date;
+    if (startDate) {
+      // Parsear fecha en formato YYYY-MM-DD correctamente
+      const [year, month, day] = startDate.split('-').map(Number);
+      baseDate = new Date(year, month - 1, day); // Meses van de 0-11
+    } else {
+      baseDate = new Date();
+    }
+
+    switch (periodType) {
+      case 'daily':
+        reportStartDate = baseDate.toISOString().split('T')[0];
+        reportEndDate = baseDate.toISOString().split('T')[0];
+        periodName = `Día ${formatDate(reportStartDate)}`;
+        break;
+      case 'weekly':
+        // Calcular semana dentro del mes actual
+        const currentMonth = baseDate.getMonth();
+        const currentYear = baseDate.getFullYear();
+        const monthStart = new Date(currentYear, currentMonth, 1);
+        const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+
+        // Encontrar el inicio de semana más cercano dentro del mes
+        let weekStart = new Date(baseDate);
+        weekStart.setDate(baseDate.getDate() - baseDate.getDay()); // Domingo
+
+        // Si el inicio de semana está antes del inicio del mes, usar el inicio del mes
+        if (weekStart < monthStart) {
+          weekStart = new Date(monthStart);
+        }
+
+        // Calcular el fin de semana
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        // Si el fin de semana está después del fin del mes, usar el fin del mes
+        if (weekEnd > monthEnd) {
+          weekEnd = new Date(monthEnd);
+        }
+
+        reportStartDate = weekStart.toISOString().split('T')[0];
+        reportEndDate = weekEnd.toISOString().split('T')[0];
+        periodName = `Semana del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
+        break;
+      case 'biweekly':
+        // Mantener la lógica actual pero asegurar que esté dentro del mes
+        const biweekStart = new Date(baseDate);
+        const dayOfMonth = baseDate.getDate();
+        const monthForBiweek = baseDate.getMonth();
+        const yearForBiweek = baseDate.getFullYear();
+
+        if (dayOfMonth <= 15) {
+          biweekStart.setDate(1);
+        } else {
+          biweekStart.setDate(16);
+        }
+
+        const biweekEnd = new Date(biweekStart);
+        biweekEnd.setDate(biweekStart.getDate() + 14);
+
+        // Asegurar que no exceda el fin del mes
+        const actualMonthEnd = new Date(yearForBiweek, monthForBiweek + 1, 0);
+        if (biweekEnd > actualMonthEnd) {
+          biweekEnd.setTime(actualMonthEnd.getTime());
+        }
+
+        reportStartDate = biweekStart.toISOString().split('T')[0];
+        reportEndDate = biweekEnd.toISOString().split('T')[0];
+        periodName = `Quincena del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
+        break;
+      case 'monthly':
+        const monthlyStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+        const monthlyEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+        reportStartDate = monthlyStart.toISOString().split('T')[0];
+        reportEndDate = monthlyEnd.toISOString().split('T')[0];
+        periodName = `Mes de ${baseDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
+        break;
+    }
+
+    switch (periodType) {
+      case 'daily':
+        reportStartDate = baseDate.toISOString().split('T')[0];
+        reportEndDate = baseDate.toISOString().split('T')[0];
+        periodName = `Día ${formatDate(reportStartDate)}`;
+        break;
+      case 'weekly':
+        // Calcular semana dentro del mes actual
+        const currentMonth = baseDate.getMonth();
+        const currentYear = baseDate.getFullYear();
+        const monthStart = new Date(currentYear, currentMonth, 1);
+        const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+        
+        // Encontrar el inicio de semana más cercano dentro del mes
+        let weekStart = new Date(baseDate);
+        weekStart.setDate(baseDate.getDate() - baseDate.getDay()); // Domingo
+        
+        // Si el inicio de semana está antes del inicio del mes, usar el inicio del mes
+        if (weekStart < monthStart) {
+          weekStart = new Date(monthStart);
+        }
+        
+        // Calcular el fin de semana
+        let weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        // Si el fin de semana está después del fin del mes, usar el fin del mes
+        if (weekEnd > monthEnd) {
+          weekEnd = new Date(monthEnd);
+        }
+        
+        reportStartDate = weekStart.toISOString().split('T')[0];
+        reportEndDate = weekEnd.toISOString().split('T')[0];
+        periodName = `Semana del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
+        break;
+      case 'biweekly':
+        // Mantener la lógica actual pero asegurar que esté dentro del mes
+        const biweekStart = new Date(baseDate);
+        const dayOfMonth = baseDate.getDate();
+        const monthForBiweek = baseDate.getMonth();
+        const yearForBiweek = baseDate.getFullYear();
+        
+        if (dayOfMonth <= 15) {
+          biweekStart.setDate(1);
+        } else {
+          biweekStart.setDate(16);
+        }
+        
+        const biweekEnd = new Date(biweekStart);
+        biweekEnd.setDate(biweekStart.getDate() + 14);
+        
+        // Asegurar que no exceda el fin del mes
+        const actualMonthEnd = new Date(yearForBiweek, monthForBiweek + 1, 0);
+        if (biweekEnd > actualMonthEnd) {
+          biweekEnd.setTime(actualMonthEnd.getTime());
+        }
+        
+        reportStartDate = biweekStart.toISOString().split('T')[0];
+        reportEndDate = biweekEnd.toISOString().split('T')[0];
+        periodName = `Quincena del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
+        break;
+      case 'monthly':
+        const monthlyStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+        const monthlyEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+        reportStartDate = monthlyStart.toISOString().split('T')[0];
+        reportEndDate = monthlyEnd.toISOString().split('T')[0];
+        periodName = `Mes de ${baseDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`;
+        break;
+    }
+
+    const employeeStats = employees.map(employee => 
+      calculateEmployeeStats(employee, reportStartDate, reportEndDate)
+    ).filter(stat => stat.workDays > 0); // Solo empleados que trabajaron
+
+    return {
+      periodName,
+      startDate: reportStartDate,
+      endDate: reportEndDate,
+      employeeStats,
+      summary: {
+        totalEmployees: employeeStats.length,
+        totalWorkDays: employeeStats.reduce((sum, stat) => sum + stat.workDays, 0),
+        totalHours: employeeStats.reduce((sum, stat) => sum + stat.totalHours, 0),
+        totalEffectiveHours: employeeStats.reduce((sum, stat) => sum + stat.effectiveHours, 0),
+        totalOvertimeHours: employeeStats.reduce((sum, stat) => sum + stat.overtimeHours, 0),
+        avgHoursPerEmployee: employeeStats.length > 0 ? 
+          Math.round((employeeStats.reduce((sum, stat) => sum + stat.totalHours, 0) / employeeStats.length) * 100) / 100 : 0
+      }
+    };
+  };
+
+  // Exportar reporte a CSV
+  const exportReportToCSV = (report: any) => {
+    const csvRows: string[][] = [];
+
+    // === ENCABEZADO DEL REPORTE ===
+    csvRows.push([`REPORTE DE HORARIOS - ${report.periodName}`]);
+    csvRows.push([`PERIODO: ${formatDate(report.startDate)} - ${formatDate(report.endDate)}`]);
+    csvRows.push([`GENERADO: ${new Date().toLocaleString('es-ES')}`]);
+    csvRows.push([`TOTAL EMPLEADOS: ${report.summary.totalEmployees}`]);
+    csvRows.push([]); // Línea vacía
+
+    // === RESUMEN GENERAL ===
+    csvRows.push(['RESUMEN GENERAL']);
+    csvRows.push(['METRICA', 'VALOR']);
+    csvRows.push(['Empleados Totales', report.summary.totalEmployees.toString()]);
+    csvRows.push(['Dias Trabajados Totales', report.summary.totalWorkDays.toString()]);
+    csvRows.push(['Horas Totales', report.summary.totalHours.toFixed(2)]);
+    csvRows.push(['Horas Efectivas Totales', report.summary.totalEffectiveHours.toFixed(2)]);
+    csvRows.push(['Horas Extras Totales', report.summary.totalOvertimeHours.toFixed(2)]);
+    csvRows.push([]); // Línea vacía
+
+    // === ESTADISTICAS POR EMPLEADO ===
+    if (report.employeeStats.length > 0) {
+      csvRows.push(['ESTADISTICAS POR EMPLEADO']);
+      csvRows.push(['Empleado', 'Dias Trabajados', 'Horas Totales', 'Horas Efectivas', 'Horas Extras', 'Horas Almuerzo']);
+
+      // Agregar cada empleado
+      report.employeeStats.forEach((stat: any) => {
+        csvRows.push([
+          stat.employeeName,
+          stat.workDays.toString(),
+          stat.totalHours.toFixed(2),
+          stat.effectiveHours.toFixed(2),
+          stat.overtimeHours.toFixed(2),
+          stat.lunchHours.toFixed(2)
+        ]);
+      });
+
+      // Fila de totales
+      csvRows.push([
+        'TOTAL',
+        report.summary.totalWorkDays.toString(),
+        report.summary.totalHours.toFixed(2),
+        report.summary.totalEffectiveHours.toFixed(2),
+        report.summary.totalOvertimeHours.toFixed(2),
+        '' // Horas almuerzo no se suman
+      ]);
+      csvRows.push([]); // Línea vacía
+
+      // === DETALLES POR DIA ===
+      csvRows.push(['DETALLES POR DIA']);
+
+      report.employeeStats.forEach((stat: any) => {
+        csvRows.push([`EMPLEADO: ${stat.employeeName}`]);
+        csvRows.push(['Fecha', 'Entrada', 'Salida', 'Horas Totales', 'Horas Efectivas', 'Horas Extras', 'Horas Almuerzo']);
+
+        // Ordenar los detalles por fecha
+        stat.workDetails
+          .sort((a: any, b: any) => a.date.localeCompare(b.date))
+          .forEach((detail: any) => {
+            csvRows.push([
+              formatDate(detail.date),
+              `${detail.entryTime} ${detail.entryPeriod}`,
+              `${detail.exitTime} ${detail.exitPeriod}`,
+              detail.totalHours.toFixed(2),
+              detail.effectiveHours.toFixed(2),
+              detail.overtimeHours.toFixed(2),
+              detail.lunchHours.toFixed(2)
+            ]);
+          });
+
+        csvRows.push([]); // Línea vacía entre empleados
+      });
+    } else {
+      csvRows.push(['NO HAY DATOS PARA EL PERIODO SELECCIONADO']);
+    }
+
+    // === NOTAS ===
+    csvRows.push(['NOTAS:']);
+    csvRows.push(['- Las horas efectivas ya incluyen deduccion de tiempo de almuerzo']);
+    csvRows.push(['- Las horas extras son aquellas trabajadas mas alla de 8 horas diarias']);
+    csvRows.push(['- Los calculos se basan unicamente en los dias que tienen horarios registrados']);
+
+    const csvContent = csvRows
+      .map(row => row.map((cell: string | number) => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_${report.periodName.replace(/[^a-zA-Z0-9\s]/g, '_').replace(/\s+/g, '_')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Obtener la siguiente fecha disponible (considerando variabilidad diaria)
   const getNextAvailableDate = (startDate?: string) => {
     let currentDate = startDate ? new Date(startDate) : new Date();
@@ -957,6 +1316,13 @@ function App() {
               >
                 <Plus size={20} />
                 Agregar Horario
+              </button>
+              
+              <button
+                onClick={() => setShowReportsModal(true)}
+                className="button-secondary bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
+              >
+                📊 Generar Reportes
               </button>
             </div>
             
@@ -1528,6 +1894,217 @@ function App() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de Reportes */}
+        {showReportsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
+              <div className="christmas-header px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl" style={{ position: 'relative', overflow: 'visible' }}>
+                <div className="string-lights" aria-hidden>
+                  <svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                    <path d="M10 40 C120 5, 240 75, 360 30 C460 0, 540 50, 590 40" stroke="#2d2926" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.9" />
+                    <g transform="translate(10,0)">
+                      <circle className="bulb" cx="40" cy="38" r="6" fill="#ef4444" />
+                      <circle className="bulb" cx="110" cy="30" r="6" fill="#10b981" />
+                      <circle className="bulb" cx="190" cy="46" r="6" fill="#f59e0b" />
+                      <circle className="bulb" cx="280" cy="28" r="6" fill="#8b5cf6" />
+                      <circle className="bulb" cx="370" cy="40" r="6" fill="#3b82f6" />
+                    </g>
+                  </svg>
+                </div>
+                <h3 className="christmas-title text-center text-lg sm:text-xl">
+                  📊 Generar Reportes de Trabajo
+                </h3>
+              </div>
+              
+              <div className="p-4 sm:p-6">
+                {/* Configuración del reporte */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4">Configurar Reporte</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Reporte</label>
+                      <select
+                        value={reportType}
+                        onChange={(e) => setReportType(e.target.value as 'daily' | 'weekly' | 'biweekly' | 'monthly')}
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                      >
+                        <option value="daily">📅 Diario</option>
+                        <option value="weekly">📆 Semanal</option>
+                        <option value="biweekly">🗓️ Quincenal</option>
+                        <option value="monthly">📊 Mensual</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Base</label>
+                      <input
+                        type="date"
+                        value={reportBaseDate}
+                        onChange={(e) => setReportBaseDate(e.target.value)}
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vista previa del reporte */}
+                {(() => {
+                  const report = generatePeriodReport(reportType, reportBaseDate);
+                  return (
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-semibold text-gray-800">{report.periodName}</h4>
+                        <button
+                          onClick={() => exportReportToCSV(report)}
+                          className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                        >
+                          📥 Exportar CSV
+                        </button>
+                      </div>
+
+                      {/* Tabla de empleados */}
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empleado</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Días</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Totales</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Efectivas</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Extras</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {report.employeeStats.map((stat, index) => (
+                              <React.Fragment key={stat.employeeName}>
+                                <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <button
+                                      onClick={() => toggleEmployeeDetails(stat.employeeName)}
+                                      className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+                                    >
+                                      {expandedEmployees.has(stat.employeeName) ? '▼' : '▶'} {stat.employeeName}
+                                    </button>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {stat.workDays}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {stat.totalHours.toFixed(1)}h
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {stat.effectiveHours.toFixed(1)}h
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                    {stat.overtimeHours > 0 ? (
+                                      <span className="text-orange-600 font-medium">{stat.overtimeHours.toFixed(1)}h</span>
+                                    ) : (
+                                      <span>0.0h</span>
+                                    )}
+                                  </td>
+                                </tr>
+                                {expandedEmployees.has(stat.employeeName) && (
+                                  <tr className={index % 2 === 0 ? 'bg-blue-50' : 'bg-blue-25'}>
+                                    <td colSpan={5} className="px-4 py-4">
+                                      <div className="bg-white rounded-lg border border-gray-200 p-4">
+                                        <h6 className="font-semibold text-gray-800 mb-3">Detalle por día - {stat.employeeName}</h6>
+                                        <div className="overflow-x-auto">
+                                          <table className="min-w-full text-sm">
+                                            <thead className="bg-gray-50">
+                                              <tr>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Entrada</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salida</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Efectivas</th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Extras</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                              {stat.workDetails
+                                                .sort((a, b) => a.date.localeCompare(b.date))
+                                                .map((detail, detailIndex) => (
+                                                <tr key={detail.date} className={detailIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                    {formatDate(detail.date)}
+                                                  </td>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {detail.entryTime} {detail.entryPeriod}
+                                                  </td>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {detail.exitTime} {detail.exitPeriod}
+                                                  </td>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {detail.totalHours.toFixed(1)}h
+                                                  </td>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {detail.effectiveHours.toFixed(1)}h
+                                                  </td>
+                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {detail.overtimeHours > 0 ? (
+                                                      <span className="text-orange-600 font-medium">{detail.overtimeHours.toFixed(1)}h</span>
+                                                    ) : (
+                                                      <span>0.0h</span>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            ))}
+                            {report.employeeStats.length > 0 && (
+                              <tr className="bg-gray-100 border-t-2 border-gray-300">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                                  TOTAL ({report.summary.totalEmployees} empleados)
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                                  {report.summary.totalWorkDays}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                                  {report.summary.totalHours.toFixed(1)}h
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
+                                  {report.summary.totalEffectiveHours.toFixed(1)}h
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-orange-600">
+                                  {report.summary.totalOvertimeHours.toFixed(1)}h
+                                </td>
+                              </tr>
+                            )}
+                            {report.employeeStats.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                  No hay datos para el período seleccionado
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Botones */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowReportsModal(false)}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

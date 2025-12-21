@@ -19,6 +19,7 @@ Una aplicación web profesional para gestionar horarios de empleados con funcion
 - ⚡ Validación completa de formularios
 - 📊 Cálculo automático de duración de turnos
 - 📸 **Generar resumen diario en imagen** - Crear y descargar imagen con horarios del día para compartir
+- 📊 **Reportes Avanzados** - Generar reportes de trabajo por períodos (diario, semanal, quincenal, mensual) con estadísticas completas de empleados, horas trabajadas, horas extras y exportación a CSV
 
 ## 📱 Instalación en Dispositivos Móviles (PWA)
 
@@ -148,5 +149,52 @@ Después del deploy, Vercel te proporcionará una URL como:
 5. **Filtrar por Fecha**: Selecciona una fecha específica para ver solo los horarios de ese día con indicador del día
 6. **Editar/Eliminar**: Usa los iconos de editar y eliminar para modificar o borrar horarios
 7. **📸 Generar Resumen Diario**: Cuando estés viendo los horarios de un día específico, haz clic en "Generar Resumen" para crear una imagen profesional con todos los horarios del día. La imagen se descarga automáticamente y se intenta compartir por WhatsApp (o se abre WhatsApp para compartir manualmente).
+8. **📊 Generar Reportes**: Haz clic en "Generar Reportes" para acceder al sistema de reportes avanzados. Selecciona el tipo de reporte (diario, semanal, quincenal, mensual), elige una fecha base y visualiza estadísticas completas de empleados incluyendo días trabajados, horas totales, horas efectivas, horas extras y promedio diario. Exporta los datos a CSV para análisis adicionales.
 
 Los datos se guardan automáticamente en IndexedDB y persisten entre sesiones sin pérdida de información.
+
+## 📊 Sistema de Reportes Avanzados
+
+La aplicación incluye un sistema completo de reportes para análisis de productividad y gestión de personal:
+
+### Tipos de Reportes Disponibles:
+
+- **📅 Diario**: Estadísticas de un día específico
+- **📆 Semanal**: Reporte de la semana que contiene la fecha base, limitado al mes actual para períodos de pago
+- **🗓️ Quincenal**: Reporte de quincena (1-15 o 16-fin del mes) según la fecha base seleccionada
+- **📊 Mensual**: Reporte del mes completo (día 1 al 30/31) de la fecha base seleccionada
+
+### Características de Períodos de Pago:
+
+- **Basado en Mes**: Todos los reportes se calculan dentro del mes de la fecha base seleccionada
+- **Períodos de Pago**: Los reportes reflejan los períodos reales de pago a empleados (del 1 al 30/31 del mes)
+- **Cálculo Individual**: Cada empleado se calcula por separado basado únicamente en sus días trabajados registrados en el período
+
+### Estadísticas Incluidas:
+
+- **Empleados Totales**: Número de empleados con horarios en el período
+- **Días Trabajados**: Total de días trabajados por todos los empleados (solo días con horarios registrados)
+- **Horas Efectivas**: Horas efectivas después de deducir tiempo de almuerzo
+- **Horas Extras**: Horas trabajadas más allá de las 8 horas diarias estándar
+- **Promedio Diario**: Promedio de horas trabajadas por día por empleado
+- **Detalle por Día**: Horas de entrada, salida y cálculos detallados para cada día trabajado
+
+### Funcionalidades:
+
+- **Vista Previa en Tiempo Real**: Los reportes se generan instantáneamente al cambiar configuración
+- **Exportación a CSV Detallada**: Descarga datos en formato CSV con resumen general, estadísticas por empleado y detalle por día con horas de entrada/salida
+- **Interfaz Intuitiva**: Selección fácil de tipo de reporte y fecha base
+- **Vista Expandible**: Cada empleado puede expandirse para ver detalle completo de cada día trabajado
+- **Cálculos Individuales**: Cada empleado se calcula por separado basado únicamente en sus días trabajados registrados
+
+### Cómo Usar los Reportes:
+
+1. Haz clic en "📊 Generar Reportes"
+2. Selecciona el tipo de reporte deseado (diario, semanal, quincenal, mensual)
+3. Elige la fecha base para el cálculo del período
+4. Revisa las estadísticas generales en el resumen
+5. Explora la tabla de empleados - haz clic en el nombre de cualquier empleado para ver el detalle completo de cada día trabajado, incluyendo horas de entrada y salida
+6. Haz clic en "📥 Exportar CSV" para descargar un archivo detallado con:
+   - Resumen general del período
+   - Estadísticas resumidas por empleado
+   - Detalle completo por día con horas de entrada, salida y cálculos de horas trabajadas
