@@ -73,12 +73,15 @@ function App() {
     entryTime: '',
     exitTime: '',
   });
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0]; // Formato YYYY-MM-DD
   });
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -92,20 +95,36 @@ function App() {
           { id: '3', name: 'Katia', date: '2025-12-18', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
           { id: '4', name: 'Kendry', date: '2025-12-18', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
           { id: '5', name: 'Claudia', date: '2025-12-18', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '6', name: 'Danna', date: '2025-12-18', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '7', name: 'Gloria', date: '2025-12-18', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '8', name: 'Kasiel', date: '2025-12-18', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '9', name: 'Yina', date: '2025-12-18', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '6', name: 'Andrea', date: '2025-12-18', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '7', name: 'Danna', date: '2025-12-18', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '8', name: 'Gloria', date: '2025-12-18', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '9', name: 'Keilly', date: '2025-12-18', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '10', name: 'Kasiel', date: '2025-12-18', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '11', name: 'Yina', date: '2025-12-18', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           // Día 19 - Mismos horarios
-          { id: '10', name: 'Julie', date: '2025-12-19', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '11', name: 'Paola', date: '2025-12-19', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '12', name: 'Katia', date: '2025-12-19', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '13', name: 'Kendry', date: '2025-12-19', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '14', name: 'Claudia', date: '2025-12-19', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '15', name: 'Danna', date: '2025-12-19', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '16', name: 'Gloria', date: '2025-12-19', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '17', name: 'Kasiel', date: '2025-12-19', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '18', name: 'Yina', date: '2025-12-19', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '11', name: 'Julie', date: '2025-12-19', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '12', name: 'Paola', date: '2025-12-19', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '13', name: 'Katia', date: '2025-12-19', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '14', name: 'Kendry', date: '2025-12-19', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '15', name: 'Claudia', date: '2025-12-19', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '16', name: 'Andrea', date: '2025-12-19', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '17', name: 'Danna', date: '2025-12-19', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '18', name: 'Gloria', date: '2025-12-19', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '19', name: 'Keilly', date: '2025-12-19', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '20', name: 'Kasiel', date: '2025-12-19', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '21', name: 'Yina', date: '2025-12-19', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          // Día 20 - Mismos horarios
+          { id: '21', name: 'Julie', date: '2025-12-20', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '22', name: 'Paola', date: '2025-12-20', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '23', name: 'Katia', date: '2025-12-20', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '24', name: 'Kendry', date: '2025-12-20', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '25', name: 'Claudia', date: '2025-12-20', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '26', name: 'Andrea', date: '2025-12-20', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '27', name: 'Danna', date: '2025-12-20', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
+          { id: '28', name: 'Gloria', date: '2025-12-20', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '29', name: 'Keilly', date: '2025-12-20', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '30', name: 'Kasiel', date: '2025-12-20', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          { id: '31', name: 'Yina', date: '2025-12-20', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
         ];
         setSchedules(testData);
       } else {
@@ -120,6 +139,25 @@ function App() {
       saveSchedulesToDB(schedules);
     }
   }, [schedules]);
+
+  // Limpiar empleados seleccionados que ya no están disponibles para la fecha
+  useEffect(() => {
+    if (form.date && selectedEmployees.length > 0) {
+      const availableEmployees = getAvailableEmployeesForDate(form.date);
+      const availableSelected = selectedEmployees.filter(employee =>
+        availableEmployees.some(available => 
+          available.toLowerCase() === employee.toLowerCase()
+        ) || (editingSchedule && employee === editingSchedule.name)
+      );
+      
+      if (availableSelected.length !== selectedEmployees.length) {
+        setSelectedEmployees(availableSelected);
+        if (availableSelected.length === 0) {
+          setEmployeeSearch('');
+        }
+      }
+    }
+  }, [form.date, schedules, selectedEmployees.length]);
 
   const sortedSchedules = [...schedules]
     .filter(schedule => !filterDate || schedule.date === filterDate)
@@ -660,13 +698,97 @@ function App() {
     }
   };
 
+  // Obtener lista de empleados únicos de los horarios existentes
+  const getUniqueEmployees = () => {
+    const employees = new Set<string>();
+    schedules.forEach(schedule => {
+      if (schedule.name.trim()) {
+        employees.add(schedule.name.trim());
+      }
+    });
+    return Array.from(employees).sort();
+  };
+
+  // Obtener empleados disponibles para una fecha específica (que no tienen horario ese día)
+  const getAvailableEmployeesForDate = (date: string) => {
+    const allEmployees = getUniqueEmployees();
+    const scheduledEmployees = new Set(
+      schedules
+        .filter(schedule => schedule.date === date)
+        .map(schedule => schedule.name.toLowerCase().trim())
+    );
+    
+    return allEmployees.filter(employee => 
+      !scheduledEmployees.has(employee.toLowerCase().trim())
+    );
+  };
+
+  // Obtener la siguiente fecha disponible (considerando variabilidad diaria)
+  const getNextAvailableDate = (startDate?: string) => {
+    let currentDate = startDate ? new Date(startDate) : new Date();
+
+    // Buscar hasta 30 días hacia adelante
+    for (let i = 0; i < 30; i++) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const scheduledToday = schedules.filter(s => s.date === dateStr);
+
+      // Una fecha es "disponible" si:
+      // 1. No tiene horarios asignados (fecha completamente libre)
+      // 2. Tiene algunos horarios pero no está "muy llena" (menos del 80% de empleados asignados)
+      const maxReasonableAssignments = Math.max(5, Math.floor(getUniqueEmployees().length * 0.8));
+
+      if (scheduledToday.length === 0 || scheduledToday.length < maxReasonableAssignments) {
+        return dateStr;
+      }
+
+      // Avanzar al siguiente día
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Si no se encontró fecha disponible, devolver la fecha actual + 1 día
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  // Función para validar si hay conflicto de horarios
+  const validateScheduleConflict = (name: string, date: string, entryTime: string, exitTime: string, excludeId?: string) => {
+    const entry = new Date(`${date}T${entryTime}`);
+    const exit = new Date(`${date}T${exitTime}`);
+    
+    if (exit <= entry) {
+      return 'La hora de salida debe ser posterior a la hora de entrada';
+    }
+
+    // Verificar conflictos con otros horarios del mismo empleado en la misma fecha
+    const conflicts = schedules.filter(schedule => 
+      schedule.id !== excludeId && 
+      schedule.name.toLowerCase() === name.toLowerCase() && 
+      schedule.date === date
+    );
+
+    for (const conflict of conflicts) {
+      const conflictEntry = new Date(`${conflict.date}T${conflict.entryTime}`);
+      const conflictExit = new Date(`${conflict.date}T${conflict.exitTime}`);
+      
+      // Verificar si hay superposición
+      if ((entry >= conflictEntry && entry < conflictExit) || 
+          (exit > conflictEntry && exit <= conflictExit) ||
+          (entry <= conflictEntry && exit >= conflictExit)) {
+        return `Conflicto de horario: ${conflict.entryTime} - ${conflict.exitTime}`;
+      }
+    }
+
+    return null;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    // Validar campos
-    if (!form.name.trim()) {
-      setError('El nombre es obligatorio.');
+    // Validar que haya empleados seleccionados
+    if (selectedEmployees.length === 0) {
+      setError('Debe seleccionar al menos un empleado.');
       return;
     }
     if (!form.date) {
@@ -687,25 +809,36 @@ function App() {
       return;
     }
     
-    // Validar que salida sea después de entrada
-    if (form.entryTime >= form.exitTime) {
-      setError('La hora de salida debe ser posterior a la hora de entrada.');
-      return;
+    // Validar conflictos de horario para todos los empleados seleccionados
+    for (const employeeName of selectedEmployees) {
+      const conflictError = validateScheduleConflict(
+        employeeName, 
+        form.date, 
+        form.entryTime, 
+        form.exitTime, 
+        editingSchedule?.id
+      );
+      if (conflictError) {
+        setError(`Conflicto para ${employeeName}: ${conflictError}`);
+        return;
+      }
     }
     
-    const schedule: Schedule = {
-      id: editingSchedule ? editingSchedule.id : Date.now().toString(),
-      name: form.name.trim(),
+    // Crear horarios para todos los empleados seleccionados
+    const newSchedules: Schedule[] = selectedEmployees.map(employeeName => ({
+      id: editingSchedule && selectedEmployees.length === 1 ? editingSchedule.id : Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: employeeName,
       date: form.date,
       entryTime: form.entryTime,
       exitTime: form.exitTime,
       entryPeriod: form.entryTime < '12:00' ? 'AM' : 'PM',
       exitPeriod: form.exitTime < '12:00' ? 'AM' : 'PM',
-    };
-    if (editingSchedule) {
-      setSchedules(schedules.map(s => s.id === editingSchedule.id ? schedule : s));
+    }));
+    
+    if (editingSchedule && selectedEmployees.length === 1) {
+      setSchedules(schedules.map(s => s.id === editingSchedule.id ? newSchedules[0] : s));
     } else {
-      setSchedules([...schedules, schedule]);
+      setSchedules([...schedules, ...newSchedules]);
     }
     closeModal();
   };
@@ -719,14 +852,20 @@ function App() {
         exitTime: schedule.exitTime,
       });
       setEditingSchedule(schedule);
+      setEmployeeSearch(schedule.name);
+      setSelectedEmployees([schedule.name]);
     } else {
+      // Usar la fecha filtrada actual o la siguiente fecha disponible
+      const suggestedDate = filterDate || getNextAvailableDate();
       setForm({
         name: '',
-        date: '',
+        date: suggestedDate,
         entryTime: '',
         exitTime: '',
       });
       setEditingSchedule(null);
+      setEmployeeSearch('');
+      setSelectedEmployees([]);
     }
     setIsModalOpen(true);
   };
@@ -953,9 +1092,23 @@ function App() {
                                     ▶
                                   </span>
                                   <span className="text-lg font-semibold text-gray-900">{formatDate(date)}</span>
-                                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                    {daySchedules.length} horario{daySchedules.length !== 1 ? 's' : ''}
-                                  </span>
+                                  <div className="flex gap-2">
+                                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                      {daySchedules.length} empleado{daySchedules.length !== 1 ? 's' : ''}
+                                    </span>
+                                    {(() => {
+                                      const totalEmployees = getUniqueEmployees().length;
+                                      const occupancyRate = totalEmployees > 0 ? Math.round((daySchedules.length / totalEmployees) * 100) : 0;
+                                      const occupancyColor = occupancyRate >= 80 ? 'bg-red-100 text-red-800' : 
+                                                            occupancyRate >= 60 ? 'bg-yellow-100 text-yellow-800' : 
+                                                            'bg-green-100 text-green-800';
+                                      return (
+                                        <span className={`${occupancyColor} text-xs font-medium px-2.5 py-0.5 rounded-full`}>
+                                          {occupancyRate}% ocupado
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                               </button>
                             </td>
@@ -1201,7 +1354,9 @@ function App() {
                   </svg>
                 </div>
                 <h3 className="christmas-title text-center text-sm sm:text-lg">
-                  {editingSchedule ? 'Editar Horario' : 'Agregar Nuevo Horario'}
+                  {editingSchedule ? 'Editar Horario' : 
+                   selectedEmployees.length > 1 ? `Crear Horarios (${selectedEmployees.length} empleados)` : 
+                   'Agregar Nuevo Horario'}
                 </h3>
               </div>
               <div className="p-4 sm:p-6 flex-1 sm:flex-none">
@@ -1212,23 +1367,120 @@ function App() {
                 )}
                 <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => setForm({...form, name: e.target.value})}
-                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                      placeholder="Ingrese el nombre"
-                      required
-                    />
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Empleados Seleccionados ({selectedEmployees.length})
+                    </label>
+                    
+                    {/* Mostrar empleados seleccionados */}
+                    {selectedEmployees.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        {selectedEmployees.map((employee, index) => (
+                          <div
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
+                          >
+                            <span>{employee}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedEmployees(selectedEmployees.filter(e => e !== employee));
+                                if (selectedEmployees.length === 1) {
+                                  setForm({...form, name: ''});
+                                  setEmployeeSearch('');
+                                }
+                              }}
+                              className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Campo de búsqueda para agregar empleados */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={employeeSearch}
+                        onChange={(e) => {
+                          setEmployeeSearch(e.target.value);
+                          setShowEmployeeDropdown(true);
+                        }}
+                        onFocus={() => setShowEmployeeDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
+                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
+                        placeholder="Buscar empleado para agregar..."
+                      />
+                      {showEmployeeDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
+                            .filter(employee => 
+                              employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
+                              !selectedEmployees.includes(employee)
+                            )
+                            .map((employee, index) => (
+                              <div
+                                key={index}
+                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 flex items-center justify-between"
+                                onClick={() => {
+                                  setSelectedEmployees([...selectedEmployees, employee]);
+                                  setEmployeeSearch('');
+                                  setShowEmployeeDropdown(false);
+                                }}
+                              >
+                                <span>{employee}</span>
+                                <span className="text-xs text-gray-400">+ Agregar</span>
+                              </div>
+                            ))}
+                          {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
+                            .filter(employee => 
+                              employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
+                              !selectedEmployees.includes(employee)
+                            ).length === 0 && (
+                            <div className="px-4 py-2 text-gray-500 text-sm">
+                              {form.date ? 'Todos los empleados disponibles ya están asignados este día' : 'No hay empleados registrados'}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Información sobre selección múltiple */}
+                    <div className="mt-2 text-xs text-gray-600">
+                      💡 Selecciona múltiples empleados para asignarles el mismo horario
+                    </div>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Fecha
+                      {form.date && (() => {
+                        const scheduledToday = schedules.filter(s => s.date === form.date).length;
+                        const maxReasonable = Math.max(5, Math.floor(getUniqueEmployees().length * 0.8));
+                        return scheduledToday >= maxReasonable ? (
+                          <span className="text-orange-600 text-xs ml-2">(Fecha muy ocupada - {scheduledToday} empleados)</span>
+                        ) : null;
+                      })()}
+                    </label>
                     <input
                       type="date"
                       value={form.date}
-                      onChange={(e) => setForm({...form, date: e.target.value})}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        const availableEmployees = getAvailableEmployeesForDate(newDate);
+                        
+                        // Si la fecha está completa, sugerir la siguiente disponible
+                        if (availableEmployees.length === 0) {
+                          const nextDate = getNextAvailableDate(newDate);
+                          setForm({...form, date: nextDate, name: ''});
+                          setEmployeeSearch('');
+                          alert(`La fecha ${newDate} ya está completa. Se cambió automáticamente a ${nextDate}.`);
+                        } else {
+                          setForm({...form, date: newDate, name: ''});
+                          setEmployeeSearch('');
+                        }
+                      }}
                       min={new Date().toISOString().split('T')[0]}
                       className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
                       required
@@ -1270,7 +1522,9 @@ function App() {
                       type="submit"
                       className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
                     >
-                      {editingSchedule ? 'Actualizar' : 'Agregar'}
+                      {editingSchedule ? 'Actualizar' : 
+                       selectedEmployees.length > 1 ? `Crear ${selectedEmployees.length} Horarios` : 
+                       'Agregar'}
                     </button>
                   </div>
                 </form>
