@@ -75,10 +75,7 @@ function App() {
   });
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [error, setError] = useState('');
-  const [filterDate, setFilterDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-  });
+  const [filterDate, setFilterDate] = useState(''); // Iniciar sin filtro para mostrar todos los horarios
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -149,6 +146,8 @@ function App() {
           { id: '38', name: 'Katia', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           { id: '39', name: 'Paola', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           { id: '40', name: 'Kendry', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
+          // Angela (dummy, para que aparezca en la lista de empleados)
+          { id: '41', name: 'Angela', date: '2025-12-22', entryTime: '00:00', exitTime: '00:01', entryPeriod: 'AM', exitPeriod: 'AM' },
         ];
         setSchedules(testData);
       } else {
@@ -725,11 +724,23 @@ function App() {
   // Obtener lista de empleados únicos de los horarios existentes
   const getUniqueEmployees = () => {
     const employees = new Set<string>();
+    
+    // Lista base de empleados disponibles
+    const baseEmployees = [
+      'Julie', 'Paola', 'Katia', 'Kendry', 'Claudia', 'Andrea', 
+      'Danna', 'Gloria', 'Keilly', 'Kasiel', 'Yina', 'Angela'
+    ];
+    
+    // Agregar empleados base
+    baseEmployees.forEach(employee => employees.add(employee.trim()));
+    
+    // Agregar empleados de horarios existentes
     schedules.forEach(schedule => {
       if (schedule.name.trim()) {
         employees.add(schedule.name.trim());
       }
     });
+    
     return Array.from(employees).sort();
   };
 
@@ -1152,11 +1163,6 @@ function App() {
     }
     if (!form.date) {
       setError('La fecha es obligatoria.');
-      return;
-    }
-    const today = new Date().toISOString().split('T')[0];
-    if (form.date < today) {
-      setError('La fecha no puede ser anterior a hoy.');
       return;
     }
     if (!form.entryTime) {
@@ -1789,7 +1795,7 @@ function App() {
                               <div
                                 key={index}
                                 className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 flex items-center justify-between"
-                                onClick={() => {
+                                onMouseDown={() => {
                                   setSelectedEmployees([...selectedEmployees, employee]);
                                   setEmployeeSearch('');
                                   setShowEmployeeDropdown(false);
@@ -1803,7 +1809,23 @@ function App() {
                             .filter(employee => 
                               employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
                               !selectedEmployees.includes(employee)
-                            ).length === 0 && (
+                            ).length === 0 && employeeSearch.trim() && (
+                            <div
+                              className="px-4 py-2 hover:bg-green-50 cursor-pointer text-gray-700 flex items-center justify-between border-t border-gray-200"
+                              onMouseDown={() => {
+                                setSelectedEmployees([...selectedEmployees, employeeSearch.trim()]);
+                                setEmployeeSearch('');
+                                setShowEmployeeDropdown(false);
+                              }}
+                            >
+                              <span>➕ Agregar nuevo empleado: "{employeeSearch.trim()}"</span>
+                            </div>
+                          )}
+                          {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
+                            .filter(employee => 
+                              employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
+                              !selectedEmployees.includes(employee)
+                            ).length === 0 && !employeeSearch.trim() && (
                             <div className="px-4 py-2 text-gray-500 text-sm">
                               {form.date ? 'Todos los empleados disponibles ya están asignados este día' : 'No hay empleados registrados'}
                             </div>
@@ -1847,7 +1869,6 @@ function App() {
                           setEmployeeSearch('');
                         }
                       }}
-                      min={new Date().toISOString().split('T')[0]}
                       className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
                       required
                     />
