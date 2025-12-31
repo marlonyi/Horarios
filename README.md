@@ -84,16 +84,53 @@ Esta aplicación es una **Progressive Web App (PWA)** que se puede instalar en t
 
 ## 🚀 Deploy en Vercel
 
-### Opción 1: Deploy Automático (Recomendado)
+### Opción 1: Deploy Automático con GitHub Actions (Recomendado)
+
+Esta opción configura el despliegue automático cada vez que haces push a la rama `main`.
+
+#### Configuración Inicial:
 
 1. **Conecta tu repositorio a Vercel:**
+   - Ve a [vercel.com](https://vercel.com) y crea una cuenta
+   - Haz clic en "New Project"
+   - Importa tu repositorio de GitHub
+   - **Importante:** Configura el proyecto pero NO actives el auto-deploy de Vercel (desactívalo)
 
+2. **Obtén los tokens de Vercel:**
+   - Ve a [vercel.com/account/tokens](https://vercel.com/account/tokens)
+   - Crea un nuevo token con nombre "GitHub Actions"
+   - Copia el token generado
+
+3. **Configura los Secrets en GitHub:**
+   - Ve a tu repositorio en GitHub
+   - Ve a Settings → Secrets and variables → Actions
+   - Agrega estos secrets:
+     - `VERCEL_TOKEN`: El token que copiaste de Vercel
+     - `VERCEL_ORG_ID`: Tu Organization ID de Vercel (lo encuentras en Settings → General)
+     - `VERCEL_PROJECT_ID`: El Project ID de tu proyecto en Vercel
+
+4. **Deploy Automático:**
+   - Cada push a la rama `main` activará automáticamente un deploy
+   - Los PRs también activarán previews automáticos
+   - No necesitas borrar y recrear proyectos nunca más
+
+#### Ventajas:
+- ✅ Deploy automático en cada commit
+- ✅ Previews automáticos para PRs
+- ✅ No más instalación manual para clientes
+- ✅ Historial completo de deploys
+- ✅ Rollback fácil si algo sale mal
+
+### Opción 2: Deploy Manual
+
+Si prefieres hacer deploys manuales:
+
+1. **Conecta tu repositorio a Vercel:**
    - Ve a [vercel.com](https://vercel.com) y crea una cuenta
    - Haz clic en "New Project"
    - Importa tu repositorio de GitHub/GitLab
 
 2. **Configuración automática:**
-
    - Vercel detectará automáticamente que es un proyecto de Vite
    - El build command será: `npm run build`
    - El output directory será: `dist`

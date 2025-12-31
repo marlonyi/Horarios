@@ -148,6 +148,7 @@ function App() {
           { id: '40', name: 'Kendry', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
           // Angela (dummy, para que aparezca en la lista de empleados)
           { id: '41', name: 'Angela', date: '2025-12-22', entryTime: '00:00', exitTime: '00:01', entryPeriod: 'AM', exitPeriod: 'AM' },
+          { id: '42', name: 'Diosely', date: '2025-12-23', entryTime: '00:00', exitTime: '00:01', entryPeriod: 'AM', exitPeriod: 'AM' },
         ];
         setSchedules(testData);
       } else {
