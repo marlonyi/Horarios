@@ -12,17 +12,20 @@
 ### 2. Obtener los Tokens de Vercel
 
 #### VERCEL_TOKEN:
+
 1. Ve a [vercel.com/account/tokens](https://vercel.com/account/tokens)
 2. Haz clic en "Create Token"
 3. Nombre: "GitHub Actions Deploy"
 4. Copia el token generado (solo se muestra una vez)
 
 #### VERCEL_ORG_ID:
+
 1. Ve a tu dashboard de Vercel
 2. Ve a Settings → General
 3. Copia el "Organization ID"
 
 #### VERCEL_PROJECT_ID:
+
 1. Ve a tu proyecto en Vercel
 2. Ve a Settings → General
 3. Copia el "Project ID"
@@ -42,6 +45,7 @@ VERCEL_PROJECT_ID = [tu_project_id]
 ### 4. Probar el Deploy
 
 1. Haz commit y push de los cambios:
+
 ```bash
 git add .
 git commit -m "Configurar deploy automático"
