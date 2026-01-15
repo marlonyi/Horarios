@@ -271,12 +271,31 @@ function App() {
       try { waPopup = window.open('', '_blank'); } catch (e) { waPopup = null; }
     }
 
+    // Calcular totales para el reporte
+    let totalEffective = 0;
+    let totalOvertime = 0;
+    let totalLunch = 0;
+
+    sortedSchedules.forEach(schedule => {
+      const stats = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+      totalEffective += stats.effectiveHours;
+      totalOvertime += stats.overtimeHours;
+      totalLunch += stats.lunchHours;
+    });
+
     const summaryElement = document.createElement('div');
-    summaryElement.className = 'summary-wrapper';
+    // Forzar dimensiones y posición para asegurar captura completa en móviles
+    summaryElement.style.position = 'fixed';
+    summaryElement.style.left = '0';
+    summaryElement.style.top = '0';
+    summaryElement.style.width = '1200px';
+    summaryElement.style.height = 'auto';
+    summaryElement.style.zIndex = '-9999';
+    summaryElement.style.backgroundColor = '#ffffff';
 
     // Corporate Styles for the Report
     summaryElement.innerHTML = `
-      <div class="summary-card" style="padding:40px; background: #fff; border-radius:1px; width:1200px; margin:0 auto; font-family: 'Inter', sans-serif; color: #1e293b;">
+      <div class="summary-card" style="padding:40px; background: #fff; width:1200px; margin:0 auto; font-family: 'Inter', sans-serif; color: #1e293b;">
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
           .summary-card { position: relative; overflow: hidden; }
@@ -287,10 +306,11 @@ function App() {
           .report-meta h2 { margin: 0; font-size: 24px; color: #3b82f6; font-weight: 600; }
           .report-meta p { margin: 5px 0 0; color: #64748b; font-size: 16px; }
           
-          .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+          .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; margin-bottom: 30px; }
           .summary-table th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; padding: 12px 16px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; letter-spacing: 0.5px; }
           .summary-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; vertical-align: middle; }
           .summary-table tr:last-child td { border-bottom: none; }
+          .summary-table tfoot td { border-top: 2px solid #e2e8f0; border-bottom: none; font-weight: 700; background: #f8fafc; color: #0f172a; font-size: 15px; }
           
           .employee-name { font-weight: 600; color: #0f172a; font-size: 15px; }
           .time-cell { font-family: 'Inter', monospace; color: #475569; }
@@ -298,7 +318,12 @@ function App() {
           .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
           .course-hours { background: #f0f9ff; color: #0284c7; }
           
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; }
+          .notes-section { background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
+          .notes-section h4 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; }
+          .notes-section ul { margin: 0; padding-left: 20px; color: #64748b; font-size: 13px; }
+          .notes-section li { margin-bottom: 4px; }
+          
+          .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; }
         </style>
 
         <div class="report-header">
@@ -338,11 +363,28 @@ function App() {
               `;
     }).join('')}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right; padding-right: 20px;">TOTALES</td>
+              <td style="text-align:center; color: #0284c7;">${totalEffective.toFixed(1)}h</td>
+              <td style="text-align:center; color: #64748b;">${totalLunch.toFixed(1)}h</td>
+              <td style="text-align:center; color: #ef4444;">${totalOvertime > 0 ? '+' + totalOvertime.toFixed(1) + 'h' : '-'}</td>
+            </tr>
+          </tfoot>
         </table>
+        
+        <div class="notes-section">
+          <h4>Notas Importantes:</h4>
+          <ul>
+            <li>Las horas efectivas incluyen la deducción del tiempo de almuerzo.</li>
+            <li>Se considera hora extra todo tiempo laborado después de las 8 horas diarias.</li>
+            <li>Este reporte es generado automáticamente y sirve como registro oficial.</li>
+          </ul>
+        </div>
 
         <div class="footer">
-          <span>Generado automáticamente</span>
-          <span>${new Date().toLocaleString('es-ES')}</span>
+          <span>Generado automáticamente por Control de Horarios</span>
+          <span>${new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</span>
         </div>
       </div>
     `;
@@ -355,6 +397,7 @@ function App() {
         scale: 2,
         useCORS: true,
         allowTaint: true,
+        windowWidth: 1200,
       });
 
       document.body.removeChild(summaryElement);
