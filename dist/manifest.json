@@ -1,25 +1,29 @@
-{
-  "name": "Control de Horarios - Gestión Profesional",
-  "short_name": "Horarios",
-  "description": "Gestión profesional de horarios laborales y asistencia",
-  "start_url": "/",
+  "id": "/frau-horarios-v1",
+  "name": "FRAU - Control de Horarios",
+  "short_name": "FRAU",
+  "description": "Gestión profesional de horarios laborales FRAU",
+  "start_url": "/?source=pwa",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "theme_color": "#bfa48a",
+  "orientation": "portrait",
   "scope": "/",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "categories": [
