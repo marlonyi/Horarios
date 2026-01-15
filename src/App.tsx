@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, X, Download, FileText, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Download, FileText, Calendar, Users } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 // Estilos corporativos
@@ -18,13 +18,16 @@ interface Schedule {
 // IndexedDB functions
 const openDB = () => {
   return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open('HorariosDB', 1);
+    const request = indexedDB.open('HorariosDB', 2);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains('schedules')) {
         db.createObjectStore('schedules', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('employees')) {
+        db.createObjectStore('employees', { keyPath: 'name' });
       }
     };
   });
@@ -62,8 +65,41 @@ const loadSchedulesFromDB = async (): Promise<Schedule[]> => {
   }
 };
 
+const saveEmployeesToDB = async (employees: string[]) => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(['employees'], 'readwrite');
+    const store = transaction.objectStore('employees');
+    store.clear();
+    employees.forEach(name => store.add({ name }));
+    return new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } catch (error) {
+    console.error('Error saving employees to DB:', error);
+  }
+};
+
+const loadEmployeesFromDB = async (): Promise<string[]> => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(['employees'], 'readonly');
+    const store = transaction.objectStore('employees');
+    return new Promise<string[]>((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result.map((item: any) => item.name));
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error loading employees from DB:', error);
+    return [];
+  }
+};
+
 function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [employees, setEmployees] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [form, setForm] = useState({
@@ -79,6 +115,9 @@ function App() {
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [showReportsModal, setShowReportsModal] = useState(false);
+  const [showEmployeesModal, setShowEmployeesModal] = useState(false);
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [employeeError, setEmployeeError] = useState('');
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
   const [reportBaseDate, setReportBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
@@ -96,63 +135,25 @@ function App() {
 
   useEffect(() => {
     const loadData = async () => {
-      const saved = await loadSchedulesFromDB();
-      if (saved.length === 0) {
-        // Pre-load test data
-        const testData: Schedule[] = [
-          // Día 18
-          { id: '1', name: 'Julie', date: '2025-12-18', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '2', name: 'Paola', date: '2025-12-18', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '3', name: 'Katia', date: '2025-12-18', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '4', name: 'Kendry', date: '2025-12-18', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '5', name: 'Claudia', date: '2025-12-18', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '6', name: 'Andrea', date: '2025-12-18', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '7', name: 'Danna', date: '2025-12-18', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '8', name: 'Gloria', date: '2025-12-18', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '9', name: 'Keilly', date: '2025-12-18', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '10', name: 'Kasiel', date: '2025-12-18', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '11', name: 'Yina', date: '2025-12-18', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          // Día 19 - Mismos horarios
-          { id: '11', name: 'Julie', date: '2025-12-19', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '12', name: 'Paola', date: '2025-12-19', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '13', name: 'Katia', date: '2025-12-19', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '14', name: 'Kendry', date: '2025-12-19', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '15', name: 'Claudia', date: '2025-12-19', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '16', name: 'Andrea', date: '2025-12-19', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '17', name: 'Danna', date: '2025-12-19', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '18', name: 'Gloria', date: '2025-12-19', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '19', name: 'Keilly', date: '2025-12-19', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '20', name: 'Kasiel', date: '2025-12-19', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '21', name: 'Yina', date: '2025-12-19', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          // Día 20 - Mismos horarios
-          { id: '21', name: 'Julie', date: '2025-12-20', entryTime: '08:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '22', name: 'Paola', date: '2025-12-20', entryTime: '08:00', exitTime: '17:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '23', name: 'Katia', date: '2025-12-20', entryTime: '09:00', exitTime: '21:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '24', name: 'Kendry', date: '2025-12-20', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '25', name: 'Claudia', date: '2025-12-20', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '26', name: 'Andrea', date: '2025-12-20', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '27', name: 'Danna', date: '2025-12-20', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '28', name: 'Gloria', date: '2025-12-20', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '29', name: 'Keilly', date: '2025-12-20', entryTime: '14:00', exitTime: '22:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '30', name: 'Kasiel', date: '2025-12-20', entryTime: '13:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '31', name: 'Yina', date: '2025-12-20', entryTime: '15:00', exitTime: '23:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          // Día 21
-          { id: '32', name: 'Danna', date: '2025-12-21', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '33', name: 'Julie', date: '2025-12-21', entryTime: '09:00', exitTime: '18:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '34', name: 'Andrea', date: '2025-12-21', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '35', name: 'Yina', date: '2025-12-21', entryTime: '10:00', exitTime: '19:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '36', name: 'Gloria', date: '2025-12-21', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '37', name: 'Keilly', date: '2025-12-21', entryTime: '11:00', exitTime: '20:00', entryPeriod: 'AM', exitPeriod: 'PM' },
-          { id: '38', name: 'Katia', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '39', name: 'Paola', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '40', name: 'Kendry', date: '2025-12-21', entryTime: '12:00', exitTime: '21:00', entryPeriod: 'PM', exitPeriod: 'PM' },
-          { id: '41', name: 'Angela', date: '2025-12-22', entryTime: '00:00', exitTime: '00:01', entryPeriod: 'AM', exitPeriod: 'AM' },
-          { id: '42', name: 'Diosely', date: '2025-12-23', entryTime: '00:00', exitTime: '00:01', entryPeriod: 'AM', exitPeriod: 'AM' },
+      const [savedSchedules, savedEmployees] = await Promise.all([
+        loadSchedulesFromDB(),
+        loadEmployeesFromDB()
+      ]);
+
+      // Initialize employees with default list if empty
+      if (savedEmployees.length === 0) {
+        const defaultEmployees = [
+          'Julie', 'Paola', 'Katia', 'Kendry', 'Claudia', 'Andrea',
+          'Danna', 'Gloria', 'Keilly', 'Kasiel', 'Yina', 'Angela'
         ];
-        setSchedules(testData);
+        setEmployees(defaultEmployees);
+        await saveEmployeesToDB(defaultEmployees);
       } else {
-        setSchedules(saved);
+        setEmployees(savedEmployees);
       }
+
+      // Always load saved schedules, start with empty array if none exist
+      setSchedules(savedSchedules);
       setIsLoading(false);
     };
     loadData();
@@ -163,6 +164,12 @@ function App() {
       saveSchedulesToDB(schedules);
     }
   }, [schedules, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && employees.length > 0) {
+      saveEmployeesToDB(employees);
+    }
+  }, [employees, isLoading]);
 
   // Limpiar empleados seleccionados que ya no están disponibles para la fecha
   useEffect(() => {
@@ -462,27 +469,33 @@ function App() {
   };
 
 
-  // Obtener lista de empleados únicos de los horarios existentes
+  // Obtener lista de empleados únicos
   const getUniqueEmployees = () => {
-    const employees = new Set<string>();
+    return [...employees].sort();
+  };
 
-    // Lista base de empleados disponibles
-    const baseEmployees = [
-      'Julie', 'Paola', 'Katia', 'Kendry', 'Claudia', 'Andrea',
-      'Danna', 'Gloria', 'Keilly', 'Kasiel', 'Yina', 'Angela'
-    ];
+  const addEmployee = () => {
+    setEmployeeError('');
+    const trimmedName = newEmployeeName.trim();
 
-    // Agregar empleados base
-    baseEmployees.forEach(employee => employees.add(employee.trim()));
+    if (!trimmedName) {
+      setEmployeeError('El nombre no puede estar vacío');
+      return;
+    }
 
-    // Agregar empleados de horarios existentes
-    schedules.forEach(schedule => {
-      if (schedule.name.trim()) {
-        employees.add(schedule.name.trim());
-      }
-    });
+    if (employees.some(e => e.toLowerCase() === trimmedName.toLowerCase())) {
+      setEmployeeError('Este empleado ya existe');
+      return;
+    }
 
-    return Array.from(employees).sort();
+    setEmployees([...employees, trimmedName]);
+    setNewEmployeeName('');
+  };
+
+  const deleteEmployee = (name: string) => {
+    if (confirm(`¿Estás seguro de eliminar a ${name}?`)) {
+      setEmployees(employees.filter(e => e !== name));
+    }
   };
 
   // Obtener empleados disponibles para una fecha específica (que no tienen horario ese día)
@@ -1018,6 +1031,14 @@ function App() {
                 className="button-secondary bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
               >
                 📊 Generar Reportes
+              </button>
+
+              <button
+                onClick={() => setShowEmployeesModal(true)}
+                className="button-secondary bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
+              >
+                <Users size={20} />
+                Gestionar Empleados
               </button>
             </div>
 
@@ -1776,6 +1797,110 @@ function App() {
                 <div className="mt-8 flex justify-end">
                   <button
                     onClick={() => setShowReportsModal(false)}
+                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-6 rounded-lg transition-colors duration-200 text-sm"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Employee Management Modal */}
+        {showEmployeesModal && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all duration-200 scale-100">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
+                <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                  <Users size={20} className="text-slate-500" />
+                  Gestionar Empleados
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEmployeesModal(false);
+                    setNewEmployeeName('');
+                    setEmployeeError('');
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {/* Add Employee Form */}
+                <div className="mb-6 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
+                    Agregar Nuevo Empleado
+                  </h4>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={newEmployeeName}
+                        onChange={(e) => setNewEmployeeName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addEmployee()}
+                        placeholder="Nombre del empleado"
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 px-4 py-2.5 text-slate-900 text-sm"
+                      />
+                      {employeeError && (
+                        <p className="text-red-600 text-xs mt-2">{employeeError}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={addEmployee}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 px-6 rounded-lg shadow-sm hover:shadow transition-all duration-200 flex items-center gap-2 text-sm"
+                    >
+                      <Plus size={18} />
+                      Agregar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Employee List */}
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">
+                    Empleados Actuales ({employees.length})
+                  </h4>
+                  {employees.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <Users size={48} className="mx-auto mb-3 opacity-50" />
+                      <p>No hay empleados registrados</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {employees.map((employee) => {
+                        return (
+                          <div
+                            key={employee}
+                            className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-slate-300 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-slate-900">{employee}</p>
+                            </div>
+                            <button
+                              onClick={() => deleteEmployee(employee)}
+                              className="p-2 rounded-lg transition-colors text-red-600 hover:text-red-800 hover:bg-red-50"
+                              title="Eliminar empleado"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setShowEmployeesModal(false);
+                      setNewEmployeeName('');
+                      setEmployeeError('');
+                    }}
                     className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-6 rounded-lg transition-colors duration-200 text-sm"
                   >
                     Cerrar
