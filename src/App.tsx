@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Download, FileText, Calendar } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
-// Estilos y tipografías navideñas
-import './fonts.css';
-import './christmas-styles.css';
+// Estilos corporativos
+import 'lucide-react';
 
 interface Schedule {
   id: string;
@@ -83,6 +82,7 @@ function App() {
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
   const [reportBaseDate, setReportBaseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
 
   const toggleEmployeeDetails = (employeeName: string) => {
     const newExpanded = new Set(expandedEmployees);
@@ -153,26 +153,27 @@ function App() {
       } else {
         setSchedules(saved);
       }
+      setIsLoading(false);
     };
     loadData();
   }, []);
 
   useEffect(() => {
-    if (schedules.length > 0 || schedules.length === 0) { // Save even when empty
+    if (!isLoading) {
       saveSchedulesToDB(schedules);
     }
-  }, [schedules]);
+  }, [schedules, isLoading]);
 
   // Limpiar empleados seleccionados que ya no están disponibles para la fecha
   useEffect(() => {
     if (form.date && selectedEmployees.length > 0) {
       const availableEmployees = getAvailableEmployeesForDate(form.date);
       const availableSelected = selectedEmployees.filter(employee =>
-        availableEmployees.some(available => 
+        availableEmployees.some(available =>
           available.toLowerCase() === employee.toLowerCase()
         ) || (editingSchedule && employee === editingSchedule.name)
       );
-      
+
       if (availableSelected.length !== selectedEmployees.length) {
         setSelectedEmployees(availableSelected);
         if (availableSelected.length === 0) {
@@ -208,16 +209,7 @@ function App() {
   };
 
 
-  const calculateDuration = (entry: string, exit: string) => {
-    const e = new Date(`2000-01-01T${entry}`);
-    const x = new Date(`2000-01-01T${exit}`);
-    const diff = x.getTime() - e.getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
-  };
-
-  const calculateWorkHours = (entry: string, exit: string, entryPeriod: 'AM' | 'PM') => {
+  const calculateWorkHours = (entry: string, exit: string, _entryPeriod: 'AM' | 'PM') => {
     const e = new Date(`2000-01-01T${entry}`);
     const x = new Date(`2000-01-01T${exit}`);
     const diff = x.getTime() - e.getTime();
@@ -273,401 +265,88 @@ function App() {
     if (!filterDate || sortedSchedules.length === 0) return;
 
     // Preparar una ventana popup vacía si el navegador no soporta Web Share API
-    // (esto ayuda a evitar que window.open sea bloqueado por el navegador)
     const preferWhatsAppFallback = !(navigator && (navigator as any).share);
     let waPopup: Window | null = null;
     if (preferWhatsAppFallback) {
       try { waPopup = window.open('', '_blank'); } catch (e) { waPopup = null; }
     }
 
-    // Intento 1: capturar la vista principal directamente (ocultando controles interactivos temporalmente)
-    const source = document.querySelector('.max-w-7xl') as HTMLElement | null;
-    if (source) {
-      // Guardar estilos originales del contenedor
-      const originalMaxWidth = source.style.maxWidth;
-      const originalWidth = source.style.width;
-      const originalMinHeight = source.style.minHeight;
-      
-      // Hacer el contenedor más ancho para que el título quepa
-      source.style.maxWidth = '1200px';
-      source.style.width = '1200px';
-      source.style.minHeight = '800px'; // Altura suficiente
-      const interactive = Array.from(source.querySelectorAll<HTMLElement>('button, input, select, textarea, a[role="button"]'));
-      const originals: {el: HTMLElement, visibility: string, display: string}[] = [];
-      interactive.forEach(el => {
-        originals.push({ el, visibility: el.style.visibility || '', display: el.style.display || '' });
-        el.style.visibility = 'hidden';
-      });
-
-      // Ocultar también las decoraciones navideñas
-      const decorations = Array.from(source.querySelectorAll<HTMLElement>('.string-lights, .decor-emoji, .ornament'));
-      decorations.forEach(el => {
-        originals.push({ el, visibility: el.style.visibility || '', display: el.style.display || '' });
-        el.style.display = 'none';
-      });
-
-      // Ocultar también el panel de filtro para que no aparezca en la captura
-      const filterEl = source.querySelector<HTMLElement>('.bg-gray-50.rounded-lg');
-      if (filterEl) {
-        originals.push({ el: filterEl, visibility: filterEl.style.visibility || '', display: filterEl.style.display || '' });
-        filterEl.style.display = 'none';
-      }
-
-      // Esperar a que las imágenes y fuentes carguen
-      await Promise.all(Array.from(source.querySelectorAll<HTMLImageElement>('img')).map(img => {
-        return new Promise<void>(res => {
-          if (img.complete) return res();
-          img.onload = img.onerror = () => res();
-        });
-      }));
-      try { if ((document as any).fonts && (document as any).fonts.ready) await (document as any).fonts.ready; } catch(e) {}
-
-      // Centrar el encabezado "Horarios del ..." y el contador dentro del área antes de capturar
-      const headings = Array.from(source.querySelectorAll<HTMLElement>('h2'));
-      headings.forEach(h => {
-        if (h.textContent && h.textContent.includes('Horarios del')) {
-          const parent = h.parentElement;
-          if (parent) {
-            parent.style.textAlign = 'center';
-            // si existe un <p> con el conteo, centrarlo también
-            const p = parent.querySelector('p');
-            if (p) p.style.textAlign = 'center';
-          }
-        }
-      });
-
-      // Centrar el título principal del header
-      const header = source.querySelector('.christmas-header') as HTMLElement;
-      if (header) {
-        header.style.textAlign = 'center';
-        // Crear versión alternativa del título para la captura (más compatible con html2canvas)
-        const title = header.querySelector('.christmas-title') as HTMLElement;
-        if (title) {
-          // Guardar estilos originales
-          originals.push({ el: title, visibility: '', display: '' });
-          (originals[originals.length - 1] as any).innerHTML = title.innerHTML;
-          (originals[originals.length - 1] as any).className = title.className;
-          (originals[originals.length - 1] as any).style = { ...title.style };
-
-          // Crear título con estilo femenino y novedoso similar a la vista principal
-          title.innerHTML = `🎅 ${title.innerHTML} 🎅`; // Agregar Papá Noel a cada costado
-          title.className = 'capture-title'; // Cambiar clase temporalmente
-          title.style.cssText = `
-            font-size: 2.8rem !important;
-            font-weight: 600 !important;
-            font-family: 'Lucida Handwriting', 'Brush Script MT', cursive !important;
-            font-style: italic !important;
-            background: linear-gradient(135deg, #f472b6 0%, #fb7185 40%, #10b981 100%) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            background-clip: text !important;
-            text-shadow:
-              0 2px 4px rgba(0, 0, 0, 0.1),
-              0 4px 8px rgba(245, 158, 11, 0.2) !important;
-            box-shadow:
-              0 8px 32px rgba(245, 158, 11, 0.3),
-              0 0 64px rgba(16, 185, 129, 0.2) !important;
-            animation: none !important;
-            padding: 1.5rem 3rem !important;
-            border-radius: 2rem !important;
-            display: inline-block !important;
-            margin: 0 auto !important;
-            border: none !important;
-            position: relative !important;
-            letter-spacing: 0.5px !important;
-            text-align: center !important;
-            line-height: 1.3 !important;
-            text-transform: none !important;
-          `;
-          // Agregar efecto de brillo sutil como en la vista principal
-          title.style.filter = 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.4))';
-        }
-        // Guardar el estilo original del header
-        originals.push({ el: header, visibility: '', display: '' });
-        (originals[originals.length - 1] as any).textAlign = header.style.textAlign;
-      }
-
-      // Añadir decoración ligera en la parte superior del área (guirnalda SVG)
-      const container = source.querySelector<HTMLElement>('.bg-white.rounded-xl.shadow-lg') || source.querySelector<HTMLElement>('.max-w-7xl');
-      let decoEl: HTMLElement | null = null;
-      if (container) {
-        decoEl = document.createElement('div');
-        decoEl.style.width = '100%';
-        decoEl.style.display = 'flex';
-        decoEl.style.justifyContent = 'center';
-        decoEl.style.pointerEvents = 'none';
-        decoEl.style.marginBottom = '0px';
-        decoEl.innerHTML = `<img src="/imagen.png" style="width:100%; height:250px; object-fit:cover;" />`;
-        // Insertar antes del primer hijo útil (tabla o similar)
-        const firstContent = container.querySelector('table, div');
-        if (firstContent && firstContent.parentElement) firstContent.parentElement.insertBefore(decoEl, firstContent);
-      }
-
-      try {
-        const canvas = await html2canvas(source, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true });
-        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(b => res(b), 'image/png'));
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `horarios-${filterDate}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          // Intentar compartir usando Web Share API con archivo (si está disponible)
-          try {
-            const file = new File([blob], `horarios-${filterDate}.png`, { type: 'image/png' });
-            const nav: any = navigator;
-            if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-              await nav.share({
-                title: `Horarios del ${formatDate(filterDate)}`,
-                text: `Resumen de horarios para ${formatDate(filterDate)}`,
-                files: [file],
-              });
-            } else {
-              // Fallback a WhatsApp mediante enlace de texto (no puede adjuntar archivos desde el navegador)
-              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent('Horarios del ' + formatDate(filterDate) + ' - he descargado la imagen en mi dispositivo.')}`;
-              if (waPopup) {
-                try { waPopup.location = whatsappUrl; } catch (e) { window.open(whatsappUrl, '_blank'); }
-              } else {
-                window.open(whatsappUrl, '_blank');
-              }
-            }
-          } catch (shareErr) {
-            // Silenciar errores de compartido y dejar que el flujo de descarga continúe
-            console.warn('Share failed:', shareErr);
-          }
-        }
-        originals.forEach(o => { 
-          o.el.style.visibility = o.visibility; 
-          o.el.style.display = o.display; 
-          if ((o as any).textAlign !== undefined) o.el.style.textAlign = (o as any).textAlign;
-          // Restaurar título completamente
-          if (o.el.classList.contains('christmas-title') || o.el.classList.contains('capture-title')) {
-            if ((o as any).innerHTML !== undefined) o.el.innerHTML = (o as any).innerHTML;
-            if ((o as any).className !== undefined) o.el.className = (o as any).className;
-            if ((o as any).style !== undefined) Object.assign(o.el.style, (o as any).style);
-          }
-        });
-        // Restaurar estilos originales del contenedor
-        source.style.maxWidth = originalMaxWidth;
-        source.style.width = originalWidth;
-        source.style.minHeight = originalMinHeight;
-        if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
-        return;
-      } catch (e) {
-        // si falla, restaurar y continuar al fallback
-        originals.forEach(o => { 
-          o.el.style.visibility = o.visibility; 
-          o.el.style.display = o.display; 
-          if ((o as any).textAlign !== undefined) o.el.style.textAlign = (o as any).textAlign;
-          // Restaurar título completamente
-          if (o.el.classList.contains('christmas-title') || o.el.classList.contains('capture-title')) {
-            if ((o as any).innerHTML !== undefined) o.el.innerHTML = (o as any).innerHTML;
-            if ((o as any).className !== undefined) o.el.className = (o as any).className;
-            if ((o as any).style !== undefined) Object.assign(o.el.style, (o as any).style);
-          }
-        });
-        // Restaurar estilos originales del contenedor
-        source.style.maxWidth = originalMaxWidth;
-        source.style.width = originalWidth;
-        source.style.minHeight = originalMinHeight;
-        if (decoEl && decoEl.parentElement) decoEl.parentElement.removeChild(decoEl);
-      }
-    }
-
-    // Crear un elemento temporal con clases reutilizables del tema navideño (fallback)
     const summaryElement = document.createElement('div');
     summaryElement.className = 'summary-wrapper';
 
+    // Corporate Styles for the Report
     summaryElement.innerHTML = `
-      <div class="summary-card" style="padding:20px; background: #fff; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08); max-width:1200px; margin:16px auto; font-family:inherit; color:inherit;">
+      <div class="summary-card" style="padding:40px; background: #fff; border-radius:1px; width:1200px; margin:0 auto; font-family: 'Inter', sans-serif; color: #1e293b;">
         <style>
-          :root{ --accent-green:#10b981; --accent-red:#ef4444; }
-          .summary-card{ padding:20px; background:#fff; border-radius:12px; box-shadow:0 8px 30px rgba(2,6,23,0.08); max-width:1200px; margin:16px auto; }
-          .christmas-header{ display:flex; align-items:center; justify-content:center; gap:12px; padding-bottom:8px; }
-          .christmas-title{
-            font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-            font-size: clamp(24px, 5vw, 40px);
-            color:#f8fafc;
-            background: linear-gradient(90deg,#f472b6 0%, #fb7185 40%, #10b981 100%);
-            padding: clamp(6px, 2vw, 8px) clamp(12px, 3vw, 18px);
-            border-radius: clamp(12px, 3vw, 16px);
-            box-shadow:0 10px 18px rgba(2,6,23,0.22);
-            letter-spacing:1px;
-            font-weight:800;
-            -webkit-text-stroke:1px rgba(0,0,0,0.12);
-            display:inline-block;
-            line-height: 1.2;
-            word-wrap: break-word;
-            max-width: 90vw;
-          }
-          .christmas-subtitle{
-            font-size: clamp(12px, 2.5vw, 16px);
-            color:#f3f4f6;
-            margin: clamp(4px, 1vw, 8px) 0 0 0;
-            font-style:italic;
-            text-shadow:0 2px 6px rgba(0,0,0,0.12);
-            line-height: 1.3;
-          }
-          .summary-table{ width:100%; border-collapse:collapse; margin-top:10px; }
-          .summary-table th{ padding:12px 10px; text-align:left; font-size:12px; color:#374151; }
-          .summary-table td{ padding:12px 10px; color:#0f172a; font-size:13px; }
-          .time-badge{ background:#dbeafe; color:#1e40af; padding:6px 10px; border-radius:18px; display:inline-block; font-weight:700; }
-          .time-badge.exit{ background:#fed7aa; color:#9a3412; font-weight:700; }
-          .summary-footer{ margin-top:18px; text-align:right; font-size:12px; color:#6b7280; }
-          .logo{ width:36px; height:36px; }
-          .christmas-header{ position:relative; overflow:hidden; }
-          .christmas-header .ornament{ position:absolute; top:6px; width:14px; height:14px; border-radius:50%; box-shadow:0 6px 12px rgba(2,6,23,0.12); }
-          .christmas-header .ornament::before{ content:''; position:absolute; left:50%; top:-8px; width:2px; height:10px; background:rgba(255,255,255,0.35); transform:translateX(-50%); border-radius:1px; }
-          .christmas-header .ornament-left{ left:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #ef4444 60%); }
-          .christmas-header .ornament-center{ left:50%; transform:translateX(-50%); background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #10b981 60%); }
-          .christmas-header .ornament-right{ right:18px; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,0.12) 20%, #f59e0b 60%); }
-
-          /* Elementos decorativos responsive */
-          .christmas-header .snowflake{
-            position:absolute;
-            color:#ffffff;
-            opacity:0.8;
-            font-size: clamp(12px, 3vw, 16px);
-            animation:snowfall 3s ease-in-out infinite;
-            display: none;
-          }
-          .christmas-header .snowflake:nth-child(1){ top:10px; left:10%; animation-delay:0s; }
-          .christmas-header .snowflake:nth-child(2){ top:15px; left:25%; animation-delay:1s; }
-          .christmas-header .snowflake:nth-child(3){ top:8px; left:75%; animation-delay:2s; }
-          .christmas-header .snowflake:nth-child(4){ top:20px; left:90%; animation-delay:0.5s; }
-
-          .christmas-header .star-decoration{
-            position:absolute;
-            color:#fbbf24;
-            opacity:0.9;
-            font-size: clamp(10px, 2.5vw, 14px);
-            animation:twinkle 2s ease-in-out infinite;
-            display: none;
-          }
-          .christmas-header .star-decoration:nth-child(1){ top:12px; left:5%; animation-delay:0.5s; }
-          .christmas-header .star-decoration:nth-child(2){ top:18px; left:95%; animation-delay:1.5s; }
-
-          .christmas-header .gift-decoration{
-            position:absolute;
-            color:#f472b6;
-            opacity:0.85;
-            font-size: clamp(8px, 2vw, 12px);
-            animation:bounce 2.5s ease-in-out infinite;
-            display: none;
-          }
-          .christmas-header .gift-decoration:nth-child(1){ top:25px; left:15%; animation-delay:0s; }
-          .christmas-header .gift-decoration:nth-child(2){ top:30px; left:85%; animation-delay:1s; }
-
-          /* Mostrar decoraciones solo en pantallas medianas y grandes */
-          @media (min-width: 768px) {
-            .christmas-header .snowflake,
-            .christmas-header .star-decoration,
-            .christmas-header .gift-decoration {
-              display: block;
-            }
-          }
-
-          @keyframes snowfall{ 0%,100%{ transform:translateY(0px) rotate(0deg); } 50%{ transform:translateY(10px) rotate(180deg); } }
-          @keyframes twinkle{ 0%,100%{ opacity:0.9; transform:scale(1); } 50%{ opacity:0.3; transform:scale(1.2); } }
-          @keyframes bounce{ 0%,100%{ transform:translateY(0px); } 50%{ transform:translateY(-5px); } }
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          .summary-card { position: relative; overflow: hidden; }
+          .report-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+          .company-info h1 { margin: 0; font-size: 32px; font-weight: 700; color: #0f172a; letter-spacing: -0.5px; }
+          .company-info p { margin: 5px 0 0; color: #64748b; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+          .report-meta { text-align: right; }
+          .report-meta h2 { margin: 0; font-size: 24px; color: #3b82f6; font-weight: 600; }
+          .report-meta p { margin: 5px 0 0; color: #64748b; font-size: 16px; }
+          
+          .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+          .summary-table th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; padding: 12px 16px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; letter-spacing: 0.5px; }
+          .summary-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; vertical-align: middle; }
+          .summary-table tr:last-child td { border-bottom: none; }
+          
+          .employee-name { font-weight: 600; color: #0f172a; font-size: 15px; }
+          .time-cell { font-family: 'Inter', monospace; color: #475569; }
+          
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+          .course-hours { background: #f0f9ff; color: #0284c7; }
+          
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; }
         </style>
 
-        <div class="christmas-header" style="padding-bottom: clamp(8px, 2vw, 16px); text-align:center; position:relative;">
-              <!-- Elementos decorativos navideños -->
-              <div class="snowflake">❄️</div>
-              <div class="snowflake">❄️</div>
-              <div class="snowflake">❄️</div>
-              <div class="snowflake">❄️</div>
-              <div class="star-decoration">⭐</div>
-              <div class="star-decoration">⭐</div>
-              <div class="gift-decoration">🎁</div>
-              <div class="gift-decoration">🎁</div>
-
-              <div style="display:flex; align-items:center; justify-content:center; gap: clamp(8px, 2vw, 12px); flex-wrap: wrap;">
-                <svg width="clamp(24px, 8vw, 36px)" height="clamp(24px, 8vw, 36px)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden style="flex-shrink: 0;">
-                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
-                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#f97373" opacity="0.95" />
-                </svg>
-                <div style="text-align:center; flex: 1; min-width: 0;">
-                  <div class="christmas-title">Horario de las mamacitas FRAULOVERS</div>
-                  <div class="christmas-subtitle">¡Organiza tu tiempo con amor, dedicación y un toque de magia navideña! ✨🎄</div>
-                </div>
-                <svg width="clamp(24px, 8vw, 36px)" height="clamp(24px, 8vw, 36px)" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden style="flex-shrink: 0;">
-                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
-                  <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fb7185" opacity="0.95" />
-                </svg>
-              </div>
-            </div>
-
-        <div style="text-align:center; margin:18px 0;">
-          <h2 style="margin:0; font-size:22px; font-weight:700;">Resumen de Horarios</h2>
-          <h3 style="margin:6px 0 0 0; font-size:14px; color:#374151;">${formatDate(filterDate)}</h3>
-          <p style="margin:8px 0 0 0; color:#6b7280;">${sortedSchedules.length} empleado${sortedSchedules.length !== 1 ? 's' : ''} programado${sortedSchedules.length !== 1 ? 's' : ''}</p>
+        <div class="report-header">
+          <div class="company-info">
+             <h1>Resumen de Horarios</h1>
+             <p>Reporte Oficial de Asistencia</p>
+          </div>
+          <div class="report-meta">
+            <h2>${formatDate(filterDate)}</h2>
+            <p>${sortedSchedules.length} empleados programados</p>
+          </div>
         </div>
 
         <table class="summary-table">
           <thead>
-            <tr style="background:linear-gradient(90deg,#f3f4f6,#e6eef9);">
-              <th>EMPLEADO</th>
-              <th>ENTRADA</th>
-              <th>SALIDA</th>
-              <th style="text-align:center">EFECTIVAS</th>
-              <th style="text-align:center">ALMUERZO</th>
-              <th style="text-align:center">EXTRAS</th>
+            <tr>
+              <th style="width: 25%">Empleado</th>
+              <th style="width: 20%">Entrada</th>
+              <th style="width: 20%">Salida</th>
+              <th style="text-align:center">Efectivas</th>
+              <th style="text-align:center">Almuerzo</th>
+              <th style="text-align:center">Extras</th>
             </tr>
           </thead>
           <tbody>
-            ${sortedSchedules.map((schedule, index) => {
-              const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
-              return `
-              <tr style="background:${index % 2 === 0 ? '#ffffff' : '#fbfcff'};">
-                <td style="font-weight:600;">${schedule.name}</td>
-                <td><span class="time-badge">${formatTime12(schedule.entryTime)}</span></td>
-                <td><span class="time-badge exit">${formatTime12(schedule.exitTime)}</span></td>
-                <td style="text-align:center">${workHours.effectiveHours}h</td>
-                <td style="text-align:center">${workHours.lunchHours}h</td>
-                <td style="text-align:center">${workHours.overtimeHours}h</td>
+            ${sortedSchedules.map((schedule) => {
+      const workHours = calculateWorkHours(schedule.entryTime, schedule.exitTime, schedule.entryPeriod);
+      return `
+              <tr>
+                <td class="employee-name">${schedule.name}</td>
+                <td class="time-cell">${formatTime12(schedule.entryTime)}</td>
+                <td class="time-cell">${formatTime12(schedule.exitTime)}</td>
+                <td style="text-align:center"><span class="badge ${workHours.effectiveHours >= 8 ? 'course-hours' : ''}">${workHours.effectiveHours}h</span></td>
+                <td style="text-align:center; color: #94a3b8;">${workHours.lunchHours > 0 ? workHours.lunchHours + 'h' : '-'}</td>
+                <td style="text-align:center; ${workHours.overtimeHours > 0 ? 'color:#ef4444; font-weight:600;' : 'color:#94a3b8;'}">${workHours.overtimeHours > 0 ? '+' + workHours.overtimeHours + 'h' : '-'}</td>
               </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
 
-        <div class="summary-footer">Generado por Horario de las mamacitas FRAULOVERS - ${new Date().toLocaleString('es-ES')}</div>
+        <div class="footer">
+          <span>Generado automáticamente</span>
+          <span>${new Date().toLocaleString('es-ES')}</span>
+        </div>
       </div>
     `;
 
-    // Esperar fuentes y aplicar estilos computados, luego agregar al DOM para capturar
-    const inlineAllComputedStyles = (root: HTMLElement) => {
-      const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
-      nodes.forEach((node) => {
-        try {
-          const cs = window.getComputedStyle(node);
-          for (let i = 0; i < cs.length; i++) {
-            const prop = cs[i];
-            const val = cs.getPropertyValue(prop);
-            const pr = cs.getPropertyPriority(prop);
-            node.style.setProperty(prop, val, pr);
-          }
-        } catch (e) {
-          // Ignorar cualquier error al leer estilos computados
-        }
-      });
-    };
-
-    try {
-      if ((document as any).fonts && (document as any).fonts.ready) {
-        await (document as any).fonts.ready;
-      }
-    } catch (e) {
-      // Si no está disponible, continuamos
-    }
-
-    inlineAllComputedStyles(summaryElement);
     document.body.appendChild(summaryElement);
 
     try {
@@ -678,69 +357,88 @@ function App() {
         allowTaint: true,
       });
 
-      // Remover el elemento temporal
       document.body.removeChild(summaryElement);
 
-      // Convertir a blob y descargar
-      canvas.toBlob((blob) => {
+      canvas.toBlob(async (blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `horarios-${filterDate}.png`;
+          link.download = `reporte-${filterDate}.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
 
-          // Intentar compartir por WhatsApp si está disponible
-          if (navigator.share) {
-            navigator.share({
-              title: `Horarios del ${formatDate(filterDate)}`,
-              text: `Resumen de horarios para ${formatDate(filterDate)}`,
-              files: [new File([blob], `horarios-${filterDate}.png`, { type: 'image/png' })],
-            }).catch(() => {
-              // Fallback: mostrar mensaje para compartir manualmente
-              alert('Imagen descargada. Puedes compartirla por WhatsApp manualmente.');
-            });
-          } else {
-            // Fallback para navegadores sin Web Share API
-            const whatsappUrl = `https://wa.me/?text=Horarios%20del%20${encodeURIComponent(formatDate(filterDate))}`;
+          // Intentar compartir usando Web Share API con archivo
+          try {
+            const file = new File([blob], `horarios-${filterDate}.png`, { type: 'image/png' });
+            const nav: any = navigator;
+
+            // Intento 1: API Nativa de Compartir
+            if (nav.share) {
+              try {
+                await nav.share({
+                  files: [file],
+                  title: `Horarios del ${formatDate(filterDate)}`,
+                  text: `Resumen de horarios para ${formatDate(filterDate)}`,
+                });
+                return; // Éxito
+              } catch (shareErr: any) {
+                const errorMsg = shareErr instanceof Error ? shareErr.message : String(shareErr);
+                if (!errorMsg.includes('AbortError')) {
+                  alert(`Error intentando compartir: ${errorMsg}`);
+                }
+                console.warn('Share API failed:', shareErr);
+              }
+            } else {
+              alert('Tu navegador no soporta compartir archivos automáticamente.');
+            }
+
+            // Intento 2: Fallback
+            alert('La imagen se ha descargado en tu dispositivo.\n\nSe abrirá WhatsApp para que puedas adjuntarla manualmente.');
+
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent('Horarios del ' + formatDate(filterDate) + ' - Adjunto reporte (imagen ya descargada).')}`;
+
             if (waPopup) {
-              try { waPopup.location = whatsappUrl; } catch (e) { window.open(whatsappUrl, '_blank'); }
+              try { waPopup.location.href = whatsappUrl; } catch (e) { window.open(whatsappUrl, '_blank'); }
             } else {
               window.open(whatsappUrl, '_blank');
             }
-            alert('Imagen descargada. Abre WhatsApp para compartir.');
+
+          } catch (err: any) {
+            console.warn('General share error:', err);
+            alert(`Error General: ${err.message}`);
           }
         }
       }, 'image/png');
     } catch (error) {
-      console.error('Error generando imagen:', error);
-      alert('Error al generar la imagen. Inténtalo de nuevo.');
+      console.error('Error generating image', error);
+      if (summaryElement.parentElement) document.body.removeChild(summaryElement);
     }
   };
+
 
   // Obtener lista de empleados únicos de los horarios existentes
   const getUniqueEmployees = () => {
     const employees = new Set<string>();
-    
+
     // Lista base de empleados disponibles
     const baseEmployees = [
-      'Julie', 'Paola', 'Katia', 'Kendry', 'Claudia', 'Andrea', 
+      'Julie', 'Paola', 'Katia', 'Kendry', 'Claudia', 'Andrea',
       'Danna', 'Gloria', 'Keilly', 'Kasiel', 'Yina', 'Angela'
     ];
-    
+
     // Agregar empleados base
     baseEmployees.forEach(employee => employees.add(employee.trim()));
-    
+
     // Agregar empleados de horarios existentes
     schedules.forEach(schedule => {
       if (schedule.name.trim()) {
         employees.add(schedule.name.trim());
       }
     });
-    
+
     return Array.from(employees).sort();
   };
 
@@ -752,8 +450,8 @@ function App() {
         .filter(schedule => schedule.date === date)
         .map(schedule => schedule.name.toLowerCase().trim())
     );
-    
-    return allEmployees.filter(employee => 
+
+    return allEmployees.filter(employee =>
       !scheduledEmployees.has(employee.toLowerCase().trim())
     );
   };
@@ -916,25 +614,25 @@ function App() {
         const currentYear = baseDate.getFullYear();
         const monthStart = new Date(currentYear, currentMonth, 1);
         const monthEnd = new Date(currentYear, currentMonth + 1, 0);
-        
+
         // Encontrar el inicio de semana más cercano dentro del mes
         let weekStart = new Date(baseDate);
         weekStart.setDate(baseDate.getDate() - baseDate.getDay()); // Domingo
-        
+
         // Si el inicio de semana está antes del inicio del mes, usar el inicio del mes
         if (weekStart < monthStart) {
           weekStart = new Date(monthStart);
         }
-        
+
         // Calcular el fin de semana
         let weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
-        
+
         // Si el fin de semana está después del fin del mes, usar el fin del mes
         if (weekEnd > monthEnd) {
           weekEnd = new Date(monthEnd);
         }
-        
+
         reportStartDate = weekStart.toISOString().split('T')[0];
         reportEndDate = weekEnd.toISOString().split('T')[0];
         periodName = `Semana del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
@@ -945,22 +643,22 @@ function App() {
         const dayOfMonth = baseDate.getDate();
         const monthForBiweek = baseDate.getMonth();
         const yearForBiweek = baseDate.getFullYear();
-        
+
         if (dayOfMonth <= 15) {
           biweekStart.setDate(1);
         } else {
           biweekStart.setDate(16);
         }
-        
+
         const biweekEnd = new Date(biweekStart);
         biweekEnd.setDate(biweekStart.getDate() + 14);
-        
+
         // Asegurar que no exceda el fin del mes
         const actualMonthEnd = new Date(yearForBiweek, monthForBiweek + 1, 0);
         if (biweekEnd > actualMonthEnd) {
           biweekEnd.setTime(actualMonthEnd.getTime());
         }
-        
+
         reportStartDate = biweekStart.toISOString().split('T')[0];
         reportEndDate = biweekEnd.toISOString().split('T')[0];
         periodName = `Quincena del ${formatDate(reportStartDate)} al ${formatDate(reportEndDate)}`;
@@ -974,7 +672,7 @@ function App() {
         break;
     }
 
-    const employeeStats = employees.map(employee => 
+    const employeeStats = employees.map(employee =>
       calculateEmployeeStats(employee, reportStartDate, reportEndDate)
     ).filter(stat => stat.workDays > 0); // Solo empleados que trabajaron
 
@@ -989,7 +687,7 @@ function App() {
         totalHours: employeeStats.reduce((sum, stat) => sum + stat.totalHours, 0),
         totalEffectiveHours: employeeStats.reduce((sum, stat) => sum + stat.effectiveHours, 0),
         totalOvertimeHours: employeeStats.reduce((sum, stat) => sum + stat.overtimeHours, 0),
-        avgHoursPerEmployee: employeeStats.length > 0 ? 
+        avgHoursPerEmployee: employeeStats.length > 0 ?
           Math.round((employeeStats.reduce((sum, stat) => sum + stat.totalHours, 0) / employeeStats.length) * 100) / 100 : 0
       }
     };
@@ -1125,26 +823,26 @@ function App() {
   const validateScheduleConflict = (name: string, date: string, entryTime: string, exitTime: string, excludeId?: string) => {
     const entry = new Date(`${date}T${entryTime}`);
     const exit = new Date(`${date}T${exitTime}`);
-    
+
     if (exit <= entry) {
       return 'La hora de salida debe ser posterior a la hora de entrada';
     }
 
     // Verificar conflictos con otros horarios del mismo empleado en la misma fecha
-    const conflicts = schedules.filter(schedule => 
-      schedule.id !== excludeId && 
-      schedule.name.toLowerCase() === name.toLowerCase() && 
+    const conflicts = schedules.filter(schedule =>
+      schedule.id !== excludeId &&
+      schedule.name.toLowerCase() === name.toLowerCase() &&
       schedule.date === date
     );
 
     for (const conflict of conflicts) {
       const conflictEntry = new Date(`${conflict.date}T${conflict.entryTime}`);
       const conflictExit = new Date(`${conflict.date}T${conflict.exitTime}`);
-      
+
       // Verificar si hay superposición
-      if ((entry >= conflictEntry && entry < conflictExit) || 
-          (exit > conflictEntry && exit <= conflictExit) ||
-          (entry <= conflictEntry && exit >= conflictExit)) {
+      if ((entry >= conflictEntry && entry < conflictExit) ||
+        (exit > conflictEntry && exit <= conflictExit) ||
+        (entry <= conflictEntry && exit >= conflictExit)) {
         return `Conflicto de horario: ${conflict.entryTime} - ${conflict.exitTime}`;
       }
     }
@@ -1155,7 +853,7 @@ function App() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     // Validar que haya empleados seleccionados
     if (selectedEmployees.length === 0) {
       setError('Debe seleccionar al menos un empleado.');
@@ -1173,14 +871,14 @@ function App() {
       setError('La hora de salida es obligatoria.');
       return;
     }
-    
+
     // Validar conflictos de horario para todos los empleados seleccionados
     for (const employeeName of selectedEmployees) {
       const conflictError = validateScheduleConflict(
-        employeeName, 
-        form.date, 
-        form.entryTime, 
-        form.exitTime, 
+        employeeName,
+        form.date,
+        form.entryTime,
+        form.exitTime,
         editingSchedule?.id
       );
       if (conflictError) {
@@ -1188,7 +886,7 @@ function App() {
         return;
       }
     }
-    
+
     // Crear horarios para todos los empleados seleccionados
     const newSchedules: Schedule[] = selectedEmployees.map(employeeName => ({
       id: editingSchedule && selectedEmployees.length === 1 ? editingSchedule.id : Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -1199,7 +897,7 @@ function App() {
       entryPeriod: form.entryTime < '12:00' ? 'AM' : 'PM',
       exitPeriod: form.exitTime < '12:00' ? 'AM' : 'PM',
     }));
-    
+
     if (editingSchedule && selectedEmployees.length === 1) {
       setSchedules(schedules.map(s => s.id === editingSchedule.id ? newSchedules[0] : s));
     } else {
@@ -1248,74 +946,22 @@ function App() {
   };
 
   return (
-    <div className="app-root holiday-display min-h-screen p-2 sm:p-4 md:p-6" style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial" }}>
-      <style>{`\
-        .christmas-header{ position:relative; overflow:visible; }\
-        .string-lights{ position:absolute; top:-28px; left:0; width:100%; display:flex; justify-content:center; pointer-events:none; z-index:2; }\
-        .string-lights svg{ width:82%; max-width:820px; height:40px; display:block; }\
-        .string-lights .bulb{ transform-origin:center; filter: drop-shadow(0 2px 6px rgba(2,6,23,0.12)); animation:twinkle 2.2s infinite ease-in-out; }\
-        .string-lights .bulb:nth-child(1){ animation-delay:0s; }\
-        .string-lights .bulb:nth-child(2){ animation-delay:0.18s; }\
-        .string-lights .bulb:nth-child(3){ animation-delay:0.36s; }\
-        .string-lights .bulb:nth-child(4){ animation-delay:0.54s; }\
-        .string-lights .bulb:nth-child(5){ animation-delay:0.72s; }\
-        .string-lights .bulb:nth-child(6){ animation-delay:0.9s; }\
-        @keyframes twinkle{ 0%,100%{ opacity:0.92; transform: translateY(0) scale(1); } 50%{ opacity:1; transform: translateY(-3px) scale(1.06); } }\
-        /* Título estilo "bubble" con contorno y sombra */\
-        .title-wrap{ display:flex; align-items:center; justify-content:center; gap:14px; z-index:3; }\
-        .christmas-title{ 
-          font-size:48px; 
-          font-weight:800; 
-          color:#f8fafc; 
-          display:inline-block; 
-          padding:12px 24px; 
-          border-radius:20px; 
-          letter-spacing:1px; 
-          line-height:1; 
-          -webkit-text-stroke:1px rgba(0,0,0,0.12); 
-          text-shadow: 
-            0 12px 20px rgba(2,6,23,0.3), 
-            0 4px 8px rgba(255,255,255,0.1),
-            0 2px 4px rgba(239, 68, 68, 0.3),
-            0 -2px 4px rgba(16, 185, 129, 0.2);
-          background: linear-gradient(135deg, #f472b6 0%, #fb7185 30%, #f59e0b 60%, #10b981 100%);
-          box-shadow: 
-            0 15px 25px rgba(2,6,23,0.25),
-            inset 0 2px 4px rgba(255,255,255,0.2),
-            0 0 20px rgba(245, 158, 11, 0.3);
-          position: relative;
-          transform: translateZ(0);
-          animation: christmas-glow 3s ease-in-out infinite alternate;
-        }
-        @keyframes christmas-glow {
-          0% { box-shadow: 0 15px 25px rgba(2,6,23,0.25), inset 0 2px 4px rgba(255,255,255,0.2), 0 0 20px rgba(245, 158, 11, 0.3); }
-          100% { box-shadow: 0 15px 25px rgba(2,6,23,0.25), inset 0 2px 4px rgba(255,255,255,0.2), 0 0 30px rgba(245, 158, 11, 0.5), 0 0 40px rgba(16, 185, 129, 0.2); }
-        }\
-        .christmas-subtitle{ font-style:italic; font-size:18px; color:#f3f4f6; margin-top:8px; text-shadow:0 2px 6px rgba(0,0,0,0.12); opacity:0.95; }\
-        .heart-icon{ width:36px; height:36px; display:inline-block; filter: drop-shadow(0 6px 12px rgba(2,6,23,0.14)); transform:translateY(2px); }
-      `}</style>
-      <div className="max-w-7xl mx-auto h-full">
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden min-h-[calc(100vh-1rem)] sm:min-h-0">
-          <div className="christmas-header px-3 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
-            <span className="ornament ornament-left" aria-hidden></span>
-            <span className="ornament ornament-center" aria-hidden></span>
-            <span className="ornament ornament-right" aria-hidden></span>
-            <div className="title-wrap">
-              <svg className="heart-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
-                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#f97373" opacity="0.95" />
-              </svg>
-              <h1 className="christmas-title">Horario de las mamacitas FRAULOVERS</h1>
-              <svg className="heart-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fff" opacity="0.92" />
-                <path d="M12 21s-7-4.35-9-7.18C0.73 10.78 3.3 6 7.5 6c2.04 0 3.5 1.2 4.5 2.4C12.99 7.2 14.45 6 16.5 6 20.7 6 23.27 10.78 21 13.82 19 16.65 12 21 12 21z" fill="#fb7185" opacity="0.95" />
-              </svg>
-            </div>
-            <p className="christmas-subtitle text-center mt-1 sm:mt-2 md:text-base">¡Organiza tu tiempo con amor, dedicación y un toque de magia navideña! ✨🎄</p>
+    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <header className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Control de Horarios</h1>
+            <p className="text-slate-500 mt-1">Sistema de gestión de asistencia y turnos</p>
           </div>
-          
+          <div className="text-right text-sm text-slate-500">
+            {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </header>
+
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 min-h-[calc(100vh-8rem)] sm:min-h-0">
-              <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
               <button
                 onClick={() => openModal()}
                 className="button-primary bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
@@ -1323,7 +969,7 @@ function App() {
                 <Plus size={20} />
                 Agregar Horario
               </button>
-              
+
               <button
                 onClick={() => setShowReportsModal(true)}
                 className="button-secondary bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 sm:py-3 px-4 sm:px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-h-[44px] touch-manipulation"
@@ -1331,7 +977,7 @@ function App() {
                 📊 Generar Reportes
               </button>
             </div>
-            
+
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
@@ -1354,11 +1000,11 @@ function App() {
                 </button>
               </div>
             </div>
-            
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
               {/* Indicador del día filtrado */}
               {filterDate && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-4">
+                <div className="hidden sm:block bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">
@@ -1377,9 +1023,9 @@ function App() {
                   </div>
                 </div>
               )}
-              
+
               {/* Tabla para desktop */}
-              <div className="block overflow-x-auto">
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="min-w-full summary-table">
                   <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
                     <tr>
@@ -1471,9 +1117,9 @@ function App() {
                                     {(() => {
                                       const totalEmployees = getUniqueEmployees().length;
                                       const occupancyRate = totalEmployees > 0 ? Math.round((daySchedules.length / totalEmployees) * 100) : 0;
-                                      const occupancyColor = occupancyRate >= 80 ? 'bg-red-100 text-red-800' : 
-                                                            occupancyRate >= 60 ? 'bg-yellow-100 text-yellow-800' : 
-                                                            'bg-green-100 text-green-800';
+                                      const occupancyColor = occupancyRate >= 80 ? 'bg-red-100 text-red-800' :
+                                        occupancyRate >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-green-100 text-green-800';
                                       return (
                                         <span className={`${occupancyColor} text-xs font-medium px-2.5 py-0.5 rounded-full`}>
                                           {occupancyRate}% ocupado
@@ -1543,11 +1189,11 @@ function App() {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Cards para móviles */}
-              <div className="hidden">
+              <div className="block sm:hidden">
                 {filterDate && (
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-4 py-3 mb-4 rounded-lg">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-4 py-3 mb-4 rounded-xl">
                     <div className="flex flex-col gap-3">
                       <div>
                         <h2 className="text-lg font-bold text-gray-900">
@@ -1593,7 +1239,7 @@ function App() {
                             </button>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3">
                           <div>
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Entrada</p>
@@ -1608,7 +1254,7 @@ function App() {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-gray-100">
                           <div className="text-center">
                             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Efectivas</p>
@@ -1668,7 +1314,7 @@ function App() {
                                 </button>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-3">
                               <div>
                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Entrada</p>
@@ -1683,7 +1329,7 @@ function App() {
                                 </span>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-gray-100">
                               <div className="text-center">
                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Efectivas</p>
@@ -1708,48 +1354,45 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-full sm:max-w-md w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
-              <div className="christmas-header px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl" style={{ position: 'relative', overflow: 'visible' }}>
-                <div className="string-lights" aria-hidden>
-                  <svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                    <path d="M10 40 C120 5, 240 75, 360 30 C460 0, 540 50, 590 40" stroke="#2d2926" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.9" />
-                    <g transform="translate(10,0)">
-                      <circle className="bulb" cx="40" cy="38" r="6" fill="#ef4444" />
-                      <circle className="bulb" cx="110" cy="30" r="6" fill="#10b981" />
-                      <circle className="bulb" cx="190" cy="46" r="6" fill="#f59e0b" />
-                      <circle className="bulb" cx="280" cy="28" r="6" fill="#8b5cf6" />
-                      <circle className="bulb" cx="370" cy="40" r="6" fill="#3b82f6" />
-                    </g>
-                  </svg>
-                </div>
-                <h3 className="christmas-title text-center text-sm sm:text-lg">
-                  {editingSchedule ? 'Editar Horario' : 
-                   selectedEmployees.length > 1 ? `Crear Horarios (${selectedEmployees.length} empleados)` : 
-                   'Agregar Nuevo Horario'}
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto transform transition-all duration-200 scale-100">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  {editingSchedule ? 'Editar Horario' :
+                    selectedEmployees.length > 1 ? `Programar (${selectedEmployees.length})` :
+                      'Nuevo Horario'}
                 </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <div className="p-4 sm:p-6 flex-1 sm:flex-none">
+
+              <div className="p-6">
                 {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-                    {error}
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
+                    <span className="mt-0.5">⚠️</span>
+                    <span>{error}</span>
                   </div>
                 )}
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Empleados Seleccionados ({selectedEmployees.length})
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Empleados ({selectedEmployees.length})
                     </label>
-                    
-                    {/* Mostrar empleados seleccionados */}
+
+                    {/* Selected Employees Tags */}
                     {selectedEmployees.length > 0 && (
                       <div className="mb-3 flex flex-wrap gap-2">
                         {selectedEmployees.map((employee, index) => (
                           <div
                             key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
                           >
                             <span>{employee}</span>
                             <button
@@ -1757,20 +1400,20 @@ function App() {
                               onClick={() => {
                                 setSelectedEmployees(selectedEmployees.filter(e => e !== employee));
                                 if (selectedEmployees.length === 1) {
-                                  setForm({...form, name: ''});
+                                  setForm({ ...form, name: '' });
                                   setEmployeeSearch('');
                                 }
                               }}
-                              className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none"
+                              className="ml-1.5 text-blue-400 hover:text-blue-600 focus:outline-none"
                             >
-                              ×
+                              <X size={14} />
                             </button>
                           </div>
                         ))}
                       </div>
                     )}
-                    
-                    {/* Campo de búsqueda para agregar empleados */}
+
+                    {/* Employee Search */}
                     <div className="relative">
                       <input
                         type="text"
@@ -1781,137 +1424,134 @@ function App() {
                         }}
                         onFocus={() => setShowEmployeeDropdown(true)}
                         onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
-                        placeholder="Buscar empleado para agregar..."
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 placeholder:text-slate-400 text-sm"
+                        placeholder="Buscar empleado..."
                       />
                       {showEmployeeDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                           {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
-                            .filter(employee => 
+                            .filter(employee =>
                               employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
                               !selectedEmployees.includes(employee)
                             )
                             .map((employee, index) => (
                               <div
                                 key={index}
-                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 flex items-center justify-between"
+                                className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-slate-700 text-sm flex items-center justify-between transition-colors"
                                 onMouseDown={() => {
                                   setSelectedEmployees([...selectedEmployees, employee]);
                                   setEmployeeSearch('');
                                   setShowEmployeeDropdown(false);
                                 }}
                               >
-                                <span>{employee}</span>
-                                <span className="text-xs text-gray-400">+ Agregar</span>
+                                <span className="font-medium">{employee}</span>
+                                <Plus size={14} className="text-slate-400" />
                               </div>
                             ))}
                           {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
-                            .filter(employee => 
+                            .filter(employee =>
                               employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
                               !selectedEmployees.includes(employee)
                             ).length === 0 && employeeSearch.trim() && (
-                            <div
-                              className="px-4 py-2 hover:bg-green-50 cursor-pointer text-gray-700 flex items-center justify-between border-t border-gray-200"
-                              onMouseDown={() => {
-                                setSelectedEmployees([...selectedEmployees, employeeSearch.trim()]);
-                                setEmployeeSearch('');
-                                setShowEmployeeDropdown(false);
-                              }}
-                            >
-                              <span>➕ Agregar nuevo empleado: "{employeeSearch.trim()}"</span>
-                            </div>
-                          )}
+                              <div
+                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-blue-700 text-sm flex items-center justify-between border-t border-slate-100"
+                                onMouseDown={() => {
+                                  setSelectedEmployees([...selectedEmployees, employeeSearch.trim()]);
+                                  setEmployeeSearch('');
+                                  setShowEmployeeDropdown(false);
+                                }}
+                              >
+                                <span>Crear "{employeeSearch.trim()}"</span>
+                                <Plus size={14} />
+                              </div>
+                            )}
                           {(form.date ? getAvailableEmployeesForDate(form.date) : getUniqueEmployees())
-                            .filter(employee => 
+                            .filter(employee =>
                               employee.toLowerCase().includes(employeeSearch.toLowerCase()) &&
                               !selectedEmployees.includes(employee)
                             ).length === 0 && !employeeSearch.trim() && (
-                            <div className="px-4 py-2 text-gray-500 text-sm">
-                              {form.date ? 'Todos los empleados disponibles ya están asignados este día' : 'No hay empleados registrados'}
-                            </div>
-                          )}
+                              <div className="px-4 py-3 text-slate-500 text-xs text-center italic">
+                                {form.date ? 'Todos asignados este día' : 'No hay empleados'}
+                              </div>
+                            )}
                         </div>
                       )}
                     </div>
-                    
-                    {/* Información sobre selección múltiple */}
-                    <div className="mt-2 text-xs text-gray-600">
-                      💡 Selecciona múltiples empleados para asignarles el mismo horario
-                    </div>
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
                       Fecha
                       {form.date && (() => {
                         const scheduledToday = schedules.filter(s => s.date === form.date).length;
                         const maxReasonable = Math.max(5, Math.floor(getUniqueEmployees().length * 0.8));
                         return scheduledToday >= maxReasonable ? (
-                          <span className="text-orange-600 text-xs ml-2">(Fecha muy ocupada - {scheduledToday} empleados)</span>
+                          <span className="text-amber-600 text-xs ml-2 font-normal">(Fecha con alta ocupación)</span>
                         ) : null;
                       })()}
                     </label>
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => {
-                        const newDate = e.target.value;
-                        const availableEmployees = getAvailableEmployeesForDate(newDate);
-                        
-                        // Si la fecha está completa, sugerir la siguiente disponible
-                        if (availableEmployees.length === 0) {
-                          const nextDate = getNextAvailableDate(newDate);
-                          setForm({...form, date: nextDate, name: ''});
-                          setEmployeeSearch('');
-                          alert(`La fecha ${newDate} ya está completa. Se cambió automáticamente a ${nextDate}.`);
-                        } else {
-                          setForm({...form, date: newDate, name: ''});
-                          setEmployeeSearch('');
-                        }
-                      }}
-                      className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={form.date}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const availableEmployees = getAvailableEmployeesForDate(newDate);
+
+                          // Si la fecha está completa, sugerir la siguiente disponible
+                          if (availableEmployees.length === 0) {
+                            const nextDate = getNextAvailableDate(newDate);
+                            setForm({ ...form, date: nextDate, name: '' });
+                            setEmployeeSearch('');
+                            alert(`La fecha ${newDate} ya está completa. Se cambió automáticamente a ${nextDate}.`);
+                          } else {
+                            setForm({ ...form, date: newDate, name: '' });
+                            setEmployeeSearch('');
+                          }
+                        }}
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 text-sm"
+                        required
+                      />
+                      <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora de Entrada</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Entrada</label>
                       <input
                         type="time"
                         value={form.entryTime}
-                        onChange={(e) => setForm({...form, entryTime: e.target.value})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
+                        onChange={(e) => setForm({ ...form, entryTime: e.target.value })}
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 text-sm"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Hora de Salida</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Salida</label>
                       <input
                         type="time"
                         value={form.exitTime}
-                        onChange={(e) => setForm({...form, exitTime: e.target.value})}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 sm:px-4 sm:py-3 border text-base min-h-[44px]"
+                        onChange={(e) => setForm({ ...form, exitTime: e.target.value })}
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 text-sm"
                         required
                       />
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4">
+
+                  <div className="flex gap-3 pt-2">
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
+                      className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 text-sm"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm hover:shadow transition-colors duration-200 text-sm"
                     >
-                      {editingSchedule ? 'Actualizar' : 
-                       selectedEmployees.length > 1 ? `Crear ${selectedEmployees.length} Horarios` : 
-                       'Agregar'}
+                      {editingSchedule ? 'Guardar Cambios' : 'Agregar Horario'}
                     </button>
                   </div>
                 </form>
@@ -1919,209 +1559,181 @@ function App() {
             </div>
           </div>
         )}
-        
-        {/* Modal de Reportes */}
+
+        {/* Reports Modal */}
         {showReportsModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
-              <div className="christmas-header px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl sm:rounded-t-2xl" style={{ position: 'relative', overflow: 'visible' }}>
-                <div className="string-lights" aria-hidden>
-                  <svg viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                    <path d="M10 40 C120 5, 240 75, 360 30 C460 0, 540 50, 590 40" stroke="#2d2926" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.9" />
-                    <g transform="translate(10,0)">
-                      <circle className="bulb" cx="40" cy="38" r="6" fill="#ef4444" />
-                      <circle className="bulb" cx="110" cy="30" r="6" fill="#10b981" />
-                      <circle className="bulb" cx="190" cy="46" r="6" fill="#f59e0b" />
-                      <circle className="bulb" cx="280" cy="28" r="6" fill="#8b5cf6" />
-                      <circle className="bulb" cx="370" cy="40" r="6" fill="#3b82f6" />
-                    </g>
-                  </svg>
-                </div>
-                <h3 className="christmas-title text-center text-lg sm:text-xl">
-                  📊 Generar Reportes de Trabajo
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-200 scale-100">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
+                <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                  <FileText size={20} className="text-slate-500" />
+                  Reportes y Estadísticas
                 </h3>
+                <button
+                  onClick={() => setShowReportsModal(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              
-              <div className="p-4 sm:p-6">
-                {/* Configuración del reporte */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4">Configurar Reporte</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <div className="p-6">
+                <div className="mb-8 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                  <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                    Configuración
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Reporte</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Periodo</label>
                       <select
                         value={reportType}
                         onChange={(e) => setReportType(e.target.value as 'daily' | 'weekly' | 'biweekly' | 'monthly')}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
+                        className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 text-sm bg-white"
                       >
-                        <option value="daily">📅 Diario</option>
-                        <option value="weekly">📆 Semanal</option>
-                        <option value="biweekly">🗓️ Quincenal</option>
-                        <option value="monthly">📊 Mensual</option>
+                        <option value="daily">Diario</option>
+                        <option value="weekly">Semanal</option>
+                        <option value="biweekly">Quincenal</option>
+                        <option value="monthly">Mensual</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Base</label>
-                      <input
-                        type="date"
-                        value={reportBaseDate}
-                        onChange={(e) => setReportBaseDate(e.target.value)}
-                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-3 border"
-                      />
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Fecha de Referencia</label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={reportBaseDate}
+                          onChange={(e) => setReportBaseDate(e.target.value)}
+                          className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 text-slate-900 text-sm"
+                        />
+                        <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Vista previa del reporte */}
                 {(() => {
                   const report = generatePeriodReport(reportType, reportBaseDate);
                   return (
-                    <div className="mb-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-lg font-semibold text-gray-800">{report.periodName}</h4>
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-900">{report.periodName}</h4>
+                          <p className="text-sm text-slate-500 mt-1">Del {formatDate(report.startDate)} al {formatDate(report.endDate)}</p>
+                        </div>
                         <button
                           onClick={() => exportReportToCSV(report)}
-                          className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                          className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow transition-all duration-200 flex items-center gap-2 text-sm"
                         >
-                          📥 Exportar CSV
+                          <Download size={18} />
+                          Exportar Excel / CSV
                         </button>
                       </div>
 
-                      {/* Tabla de empleados */}
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empleado</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Días</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Totales</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Efectivas</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas Extras</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {report.employeeStats.map((stat, index) => (
-                              <React.Fragment key={stat.employeeName}>
-                                <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <button
-                                      onClick={() => toggleEmployeeDetails(stat.employeeName)}
-                                      className="flex items-center gap-2 hover:text-blue-600 transition-colors"
-                                    >
-                                      {expandedEmployees.has(stat.employeeName) ? '▼' : '▶'} {stat.employeeName}
-                                    </button>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    {stat.workDays}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    {stat.totalHours.toFixed(1)}h
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    {stat.effectiveHours.toFixed(1)}h
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    {stat.overtimeHours > 0 ? (
-                                      <span className="text-orange-600 font-medium">{stat.overtimeHours.toFixed(1)}h</span>
-                                    ) : (
-                                      <span>0.0h</span>
-                                    )}
-                                  </td>
-                                </tr>
-                                {expandedEmployees.has(stat.employeeName) && (
-                                  <tr className={index % 2 === 0 ? 'bg-blue-50' : 'bg-blue-25'}>
-                                    <td colSpan={5} className="px-4 py-4">
-                                      <div className="bg-white rounded-lg border border-gray-200 p-4">
-                                        <h6 className="font-semibold text-gray-800 mb-3">Detalle por día - {stat.employeeName}</h6>
-                                        <div className="overflow-x-auto">
-                                          <table className="min-w-full text-sm">
-                                            <thead className="bg-gray-50">
+                      <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Empleado</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Días</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Horas Total</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Efectivas</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Extras</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                              {report.employeeStats.map((stat, index) => (
+                                <React.Fragment key={stat.employeeName}>
+                                  <tr className={`hover:bg-slate-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                                      <button
+                                        onClick={() => toggleEmployeeDetails(stat.employeeName)}
+                                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors focus:outline-none group"
+                                      >
+                                        <span className={`transform transition-transform ${expandedEmployees.has(stat.employeeName) ? 'rotate-90' : ''} text-slate-400 group-hover:text-blue-500`}>▶</span>
+                                        {stat.employeeName}
+                                      </button>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                                      {stat.workDays}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
+                                      {stat.totalHours.toFixed(1)}h
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-700 font-medium bg-green-50/50">
+                                      {stat.effectiveHours.toFixed(1)}h
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-700 font-medium">
+                                      {stat.overtimeHours > 0 ? stat.overtimeHours.toFixed(1) + 'h' : '-'}
+                                    </td>
+                                  </tr>
+                                  {expandedEmployees.has(stat.employeeName) && (
+                                    <tr className="bg-slate-50/80">
+                                      <td colSpan={5} className="px-6 py-4">
+                                        <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
+                                          <table className="min-w-full text-sm divide-y divide-slate-100">
+                                            <thead className="bg-slate-100">
                                               <tr>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Entrada</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Salida</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Efectivas</th>
-                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Extras</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Fecha</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Horario</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Total</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Efectivas</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Extras</th>
                                               </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-200">
+                                            <tbody className="divide-y divide-slate-100">
                                               {stat.workDetails
                                                 .sort((a, b) => a.date.localeCompare(b.date))
-                                                .map((detail, detailIndex) => (
-                                                <tr key={detail.date} className={detailIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                                                    {formatDate(detail.date)}
-                                                  </td>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                                    {detail.entryTime} {detail.entryPeriod}
-                                                  </td>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                                    {detail.exitTime} {detail.exitPeriod}
-                                                  </td>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                                    {detail.totalHours.toFixed(1)}h
-                                                  </td>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                                    {detail.effectiveHours.toFixed(1)}h
-                                                  </td>
-                                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                                    {detail.overtimeHours > 0 ? (
-                                                      <span className="text-orange-600 font-medium">{detail.overtimeHours.toFixed(1)}h</span>
-                                                    ) : (
-                                                      <span>0.0h</span>
-                                                    )}
-                                                  </td>
-                                                </tr>
-                                              ))}
+                                                .map((detail) => (
+                                                  <tr key={detail.date} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-2 whitespace-nowrap text-slate-700">{formatDate(detail.date)}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap text-slate-500">
+                                                      {detail.entryTime} - {detail.exitTime}
+                                                    </td>
+                                                    <td className="px-4 py-2 whitespace-nowrap text-slate-600">{detail.totalHours.toFixed(1)}h</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap text-green-700 font-medium">{detail.effectiveHours.toFixed(1)}h</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap text-amber-700">{detail.overtimeHours > 0 ? detail.overtimeHours.toFixed(1) + 'h' : '-'}</td>
+                                                  </tr>
+                                                ))}
                                             </tbody>
                                           </table>
                                         </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
-                            ))}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                              {report.employeeStats.length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">
+                                    No hay registros para este período
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
                             {report.employeeStats.length > 0 && (
-                              <tr className="bg-gray-100 border-t-2 border-gray-300">
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                                  TOTAL ({report.summary.totalEmployees} empleados)
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                                  {report.summary.totalWorkDays}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                                  {report.summary.totalHours.toFixed(1)}h
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">
-                                  {report.summary.totalEffectiveHours.toFixed(1)}h
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-orange-600">
-                                  {report.summary.totalOvertimeHours.toFixed(1)}h
-                                </td>
-                              </tr>
+                              <tfoot className="bg-slate-50 border-t border-slate-200">
+                                <tr>
+                                  <td className="px-6 py-3 text-sm font-bold text-slate-900">TOTALES</td>
+                                  <td className="px-6 py-3 text-sm font-bold text-slate-700">{report.summary.totalWorkDays}</td>
+                                  <td className="px-6 py-3 text-sm font-bold text-slate-700">{report.summary.totalHours.toFixed(1)}h</td>
+                                  <td className="px-6 py-3 text-sm font-bold text-green-700">{report.summary.totalEffectiveHours.toFixed(1)}h</td>
+                                  <td className="px-6 py-3 text-sm font-bold text-amber-700">{report.summary.totalOvertimeHours.toFixed(1)}h</td>
+                                </tr>
+                              </tfoot>
                             )}
-                            {report.employeeStats.length === 0 && (
-                              <tr>
-                                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                                  No hay datos para el período seleccionado
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* Botones */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <div className="mt-8 flex justify-end">
                   <button
-                    type="button"
                     onClick={() => setShowReportsModal(false)}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-4 sm:py-3 px-4 sm:px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 min-h-[48px] text-base touch-manipulation"
+                    className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-6 rounded-lg transition-colors duration-200 text-sm"
                   >
                     Cerrar
                   </button>

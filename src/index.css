@@ -1,9 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+
 /* Optimizaciones para pantalla completa móvil */
 @supports (-webkit-touch-callout: none) {
+
   /* iOS Safari */
   .touch-manipulation {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
@@ -12,6 +23,7 @@
 
 /* Mejorar experiencia en pantalla completa */
 @media screen and (max-width: 640px) {
+
   html,
   body {
     height: 100vh;
@@ -27,6 +39,7 @@
 
 /* Evitar zoom en inputs en iOS */
 @media screen and (max-width: 640px) {
+
   input[type="text"],
   input[type="number"],
   input[type="date"],
