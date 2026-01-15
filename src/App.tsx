@@ -1005,9 +1005,12 @@ function App() {
     <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Control de Horarios</h1>
-            <p className="text-slate-500 mt-1">Sistema de gestión de asistencia y turnos</p>
+          <div className="flex items-center gap-4">
+            <img src="/icon-192.png" alt="FRAU Logo" className="w-16 h-16 rounded-xl shadow-sm object-contain" />
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">FRAU</h1>
+              <p className="text-slate-500 mt-0.5">Control de Horarios</p>
+            </div>
           </div>
           <div className="text-right text-sm text-slate-500">
             {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

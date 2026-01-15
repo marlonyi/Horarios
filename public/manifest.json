@@ -1,11 +1,12 @@
 {
-  "name": "Control de Horarios - Gestión Profesional",
-  "short_name": "Horarios",
-  "description": "Gestión profesional de horarios laborales y asistencia",
+  "id": "/",
+  "name": "FRAU - Control de Horarios",
+  "short_name": "FRAU",
+  "description": "Gestión profesional de horarios laborales FRAU",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "theme_color": "#bfa48a",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

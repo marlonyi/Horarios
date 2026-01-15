@@ -1,6 +1,6 @@
 // Service Worker básico para PWA
-const CACHE_NAME = "horarios-v1";
-const urlsToCache = ["/", "/manifest.json", "/icon.svg"];
+const CACHE_NAME = "horarios-v2";
+const urlsToCache = ["/", "/manifest.json", "/icon.svg", "/icon-192.png", "/icon-512.png"];
 
 // Instalación del service worker
 self.addEventListener("install", (event) => {
